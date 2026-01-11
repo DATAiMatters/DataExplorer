@@ -1,0 +1,132 @@
+// ============================================
+// SEMANTIC SCHEMA TYPES
+// ============================================
+
+export type DataType = 'hierarchy' | 'tabular' | 'network';
+
+export interface SemanticRole {
+  id: string;
+  name: string;
+  description: string;
+  required: boolean;
+  multiple?: boolean;
+  dataType?: 'string' | 'number' | 'boolean' | 'date';
+}
+
+export interface SemanticSchema {
+  id: string;
+  dataType: DataType;
+  name: string;
+  description: string;
+  roles: SemanticRole[];
+}
+
+// ============================================
+// COLUMN MAPPING TYPES
+// ============================================
+
+export interface ColumnMapping {
+  sourceColumn: string;
+  roleId: string;
+  displayName: string;
+  transform?: 'none' | 'uppercase' | 'lowercase' | 'trim';
+}
+
+// ============================================
+// DATA BUNDLE TYPES
+// ============================================
+
+export interface DataSource {
+  type: 'csv' | 'json';
+  fileName: string;
+  rawData: string;
+  parsedData: Record<string, unknown>[];
+  columns: string[];
+}
+
+export interface DataBundle {
+  id: string;
+  name: string;
+  description?: string;
+  schemaId: string;
+  source: DataSource;
+  mappings: ColumnMapping[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
+// VISUALIZATION DATA TYPES
+// ============================================
+
+// Hierarchy-specific types
+export interface HierarchyNode {
+  id: string;
+  label: string;
+  parentId: string | null;
+  metrics: Record<string, number>;
+  children?: HierarchyNode[];
+  depth?: number;
+}
+
+// Tabular-specific types
+export interface TabularProfile {
+  column: string;
+  displayName: string;
+  dataType: 'string' | 'number' | 'date' | 'boolean' | 'mixed';
+  nullCount: number;
+  uniqueCount: number;
+  totalCount: number;
+  topValues?: { value: string; count: number }[];
+  numericStats?: {
+    min: number;
+    max: number;
+    mean: number;
+    median: number;
+    stdDev: number;
+  };
+}
+
+// Network-specific types
+export interface NetworkNode {
+  id: string;
+  label: string;
+  group?: string;
+  metrics?: Record<string, number>;
+}
+
+export interface NetworkEdge {
+  source: string;
+  target: string;
+  weight?: number;
+  label?: string;
+}
+
+export interface NetworkData {
+  nodes: NetworkNode[];
+  edges: NetworkEdge[];
+}
+
+// ============================================
+// UI STATE TYPES
+// ============================================
+
+export type ViewMode = 'bundles' | 'schemas' | 'explorer';
+
+export interface ExplorerState {
+  selectedBundleId: string | null;
+  zoomLevel: number;
+  focusedNodeId: string | null;
+  breadcrumb: string[];
+}
+
+// ============================================
+// APP STATE
+// ============================================
+
+export interface AppState {
+  schemas: SemanticSchema[];
+  bundles: DataBundle[];
+  viewMode: ViewMode;
+  explorerState: ExplorerState;
+}

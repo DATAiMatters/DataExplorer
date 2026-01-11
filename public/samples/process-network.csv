@@ -1,0 +1,32 @@
+SOURCE_PROCESS,TARGET_PROCESS,RELATIONSHIP_TYPE,DATA_FLOW_VOLUME,CRITICALITY
+Order Entry,Inventory Check,Data Flow,1500,High
+Inventory Check,Order Validation,Triggers,1500,High
+Order Validation,Credit Check,Triggers,1200,High
+Credit Check,Order Approval,Data Flow,1100,High
+Order Approval,Production Planning,Triggers,1000,Critical
+Production Planning,Material Requisition,Triggers,800,Critical
+Material Requisition,Inventory Check,Data Flow,800,Medium
+Production Planning,Work Order Creation,Triggers,1000,Critical
+Work Order Creation,Resource Allocation,Triggers,950,High
+Resource Allocation,Production Scheduling,Data Flow,900,High
+Production Scheduling,Shop Floor Execution,Triggers,900,Critical
+Shop Floor Execution,Quality Inspection,Triggers,880,High
+Quality Inspection,Production Reporting,Data Flow,850,Medium
+Production Reporting,Inventory Update,Triggers,820,High
+Inventory Update,Order Fulfillment,Data Flow,800,High
+Order Fulfillment,Shipping,Triggers,780,High
+Shipping,Invoice Generation,Triggers,750,High
+Invoice Generation,Accounts Receivable,Data Flow,750,High
+Accounts Receivable,Payment Processing,Triggers,700,Medium
+Payment Processing,Revenue Recognition,Data Flow,680,Medium
+Material Requisition,Procurement,Triggers,600,Medium
+Procurement,Vendor Management,Data Flow,580,Medium
+Vendor Management,Purchase Order,Triggers,550,Medium
+Purchase Order,Receiving,Triggers,500,Medium
+Receiving,Inventory Update,Data Flow,480,High
+Quality Inspection,Non-Conformance,Triggers,120,Medium
+Non-Conformance,Root Cause Analysis,Data Flow,100,Low
+Root Cause Analysis,Corrective Action,Triggers,90,Medium
+Corrective Action,Process Improvement,Data Flow,80,Low
+Production Planning,Capacity Planning,Data Flow,700,High
+Capacity Planning,Resource Allocation,Triggers,650,Medium
