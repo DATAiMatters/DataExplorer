@@ -1,9 +1,13 @@
 source_node,target_node,edge_weight,edge_label,source_domain,target_domain
-MAST,STKO,1,references,Material Master,BOM
-MAST,STPO,1,references,Material Master,BOM
+MAST,STKO,1,references,BOM,BOM
+MAST,STLB,1,allocation,BOM,BOM
 STKO,STPO,1,contains,BOM,BOM
+STKO,STAS,1,status,BOM,BOM
+STLB,STPO,1,item_link,BOM,BOM
+STZU,STKO,1,permanent_data,BOM,BOM
 STPO,MARA,1,material_link,BOM,Material Master
 STPO,MARC,1,plant_data,BOM,Material Master
+MARA,MAST,1,bom_assignment,Material Master,BOM
 MARA,MAKT,1,description,Material Master,Material Master
 MARA,MBEW,1,valuation,Material Master,Material Master
 MARC,MBEW,1,valuation_data,Material Master,Material Master
@@ -14,7 +18,7 @@ KLAH,CABN,1,characteristic,Configuration,Configuration
 CABN,CAWN,1,char_values,Configuration,Configuration
 STPO,PLMZ,1,allocation,BOM,Production Planning
 PLMZ,PKHD,1,kanban_header,Production Planning,Production Planning
-MAST,PLMZ,1,allocation_link,Material Master,Production Planning
+MAST,PLMZ,1,allocation_link,BOM,Production Planning
 STKO,PLPO,1,operation_link,BOM,Production Planning
 PLPO,CRHD,1,work_center,Production Planning,Production Planning
 CRHD,CRCA,1,capacity,Production Planning,Production Planning

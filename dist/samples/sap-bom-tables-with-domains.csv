@@ -1,7 +1,10 @@
 table_name,domain,description
-MAST,Material Master,Material to BOM Link
+MAST,BOM,Material to BOM Link
 STKO,BOM,BOM Header
 STPO,BOM,BOM Item (Components)
+STLB,BOM,BOM Allocation
+STAS,BOM,BOM Status
+STZU,BOM,Permanent BOM Data
 MARA,Material Master,General Material Data
 MARC,Material Master,Plant Data for Material
 MAKT,Material Master,Material Descriptions
