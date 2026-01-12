@@ -119,10 +119,33 @@ export interface NetworkData {
 }
 
 // ============================================
+// AI INTEGRATION TYPES
+// ============================================
+
+export type AIProvider = 'openai-compatible' | 'anthropic' | 'ollama';
+
+export interface AISettings {
+  enabled: boolean;
+  provider: AIProvider;
+  endpoint: string;
+  apiKey: string;
+  model: string;
+  maxTokens: number;
+}
+
+export interface AIPreset {
+  provider: AIProvider;
+  endpoint: string;
+  apiKey: string;
+  model: string;
+  maxTokens: number;
+}
+
+// ============================================
 // UI STATE TYPES
 // ============================================
 
-export type ViewMode = 'bundles' | 'schemas' | 'explorer' | 'relationships';
+export type ViewMode = 'bundles' | 'schemas' | 'explorer' | 'relationships' | 'ai-settings';
 
 export interface ExplorerState {
   selectedBundleId: string | null;
@@ -140,4 +163,5 @@ export interface AppState {
   bundles: DataBundle[];
   viewMode: ViewMode;
   explorerState: ExplorerState;
+  aiSettings: AISettings;
 }

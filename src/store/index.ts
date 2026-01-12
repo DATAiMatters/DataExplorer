@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { SemanticSchema, DataBundle, ViewMode, ExplorerState } from '@/types';
+import type { SemanticSchema, DataBundle, ViewMode, ExplorerState, AISettings } from '@/types';
 import { defaultSchemas } from '@/data/schemas';
 import {
   defaultRelationshipTypeConfig,
@@ -15,6 +15,7 @@ interface AppStore {
   viewMode: ViewMode;
   explorerState: ExplorerState;
   relationshipTypeConfig: RelationshipTypeConfig;
+  aiSettings: AISettings;
 
   // Schema actions
   addSchema: (schema: SemanticSchema) => void;
@@ -44,6 +45,9 @@ interface AppStore {
   deleteRelationshipType: (name: string) => void;
   resetRelationshipTypes: () => void;
 
+  // AI settings actions
+  setAISettings: (settings: Partial<AISettings>) => void;
+
   // Import/Export
   exportConfig: () => string;
   importConfig: (json: string) => void;
@@ -65,6 +69,14 @@ export const useAppStore = create<AppStore>()(
       viewMode: 'bundles',
       explorerState: initialExplorerState,
       relationshipTypeConfig: defaultRelationshipTypeConfig,
+      aiSettings: {
+        enabled: false,
+        provider: 'openai-compatible',
+        endpoint: '',
+        apiKey: '',
+        model: '',
+        maxTokens: 1000,
+      },
 
       // Schema actions
       addSchema: (schema) =>
@@ -193,6 +205,12 @@ export const useAppStore = create<AppStore>()(
       resetRelationshipTypes: () =>
         set({ relationshipTypeConfig: defaultRelationshipTypeConfig }),
 
+      // AI settings actions
+      setAISettings: (settings) =>
+        set((state) => ({
+          aiSettings: { ...state.aiSettings, ...settings },
+        })),
+
       // Import/Export
       exportConfig: () => {
         const state = get();
@@ -240,6 +258,7 @@ export const useAppStore = create<AppStore>()(
           },
         })),
         relationshipTypeConfig: state.relationshipTypeConfig,
+        aiSettings: state.aiSettings,
       }),
     }
   )
