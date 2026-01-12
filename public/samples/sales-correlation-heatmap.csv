@@ -1,0 +1,26 @@
+row_label,column_label,cell_value,cell_label
+Revenue,Revenue,1.00,1.00
+Revenue,Marketing Spend,0.85,0.85
+Revenue,Sales Team Size,0.72,0.72
+Revenue,Customer Satisfaction,0.68,0.68
+Revenue,Product Quality,0.55,0.55
+Marketing Spend,Revenue,0.85,0.85
+Marketing Spend,Marketing Spend,1.00,1.00
+Marketing Spend,Sales Team Size,0.45,0.45
+Marketing Spend,Customer Satisfaction,0.52,0.52
+Marketing Spend,Product Quality,0.38,0.38
+Sales Team Size,Revenue,0.72,0.72
+Sales Team Size,Marketing Spend,0.45,0.45
+Sales Team Size,Sales Team Size,1.00,1.00
+Sales Team Size,Customer Satisfaction,0.41,0.41
+Sales Team Size,Product Quality,0.28,0.28
+Customer Satisfaction,Revenue,0.68,0.68
+Customer Satisfaction,Marketing Spend,0.52,0.52
+Customer Satisfaction,Sales Team Size,0.41,0.41
+Customer Satisfaction,Customer Satisfaction,1.00,1.00
+Customer Satisfaction,Product Quality,0.78,0.78
+Product Quality,Revenue,0.55,0.55
+Product Quality,Marketing Spend,0.38,0.38
+Product Quality,Sales Team Size,0.28,0.28
+Product Quality,Customer Satisfaction,0.78,0.78
+Product Quality,Product Quality,1.00,1.00

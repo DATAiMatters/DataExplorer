@@ -1,0 +1,27 @@
+category,parent_category,value,label
+Total Budget,null,10000000,FY2024 Budget
+Engineering,Total Budget,4500000,45%
+Product,Total Budget,1800000,18%
+Sales,Total Budget,1500000,15%
+Marketing,Total Budget,1200000,12%
+Operations,Total Budget,800000,8%
+Finance,Total Budget,200000,2%
+Backend Engineering,Engineering,2000000,Backend Team
+Frontend Engineering,Engineering,1500000,Frontend Team
+Infrastructure,Engineering,700000,DevOps & Cloud
+Security,Engineering,300000,Security Team
+Product Management,Product,1000000,Product Managers
+UX Design,Product,500000,Design Team
+User Research,Product,300000,Research Team
+Sales Operations,Sales,500000,Sales Ops
+Account Executives,Sales,700000,Sales Reps
+Customer Success,Sales,300000,CS Team
+Digital Marketing,Marketing,400000,Online Campaigns
+Content Marketing,Marketing,300000,Content Team
+Brand Marketing,Marketing,300000,Brand & Events
+Marketing Operations,Marketing,200000,Marketing Ops
+Facilities,Operations,300000,Office & Facilities
+IT Support,Operations,250000,Internal IT
+HR,Operations,250000,Human Resources
+Accounting,Finance,120000,Accounting Team
+Financial Planning,Finance,80000,FP&A Team

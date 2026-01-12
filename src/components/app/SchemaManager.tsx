@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Plus, RotateCcw, Trash2, Edit2, FileText, Network, GitBranch } from 'lucide-react';
+import { Plus, RotateCcw, Trash2, Edit2, FileText, Network, GitBranch, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp } from 'lucide-react';
 import { generateId } from '@/lib/dataUtils';
 import type { SemanticSchema, SemanticRole, DataType } from '@/types';
 
@@ -19,12 +19,22 @@ const dataTypeIcons = {
   hierarchy: GitBranch,
   tabular: FileText,
   network: Network,
+  timeline: Calendar,
+  treemap: LayoutGrid,
+  heatmap: Grid3x3,
+  geographic: MapPin,
+  flow: TrendingUp,
 };
 
 const dataTypeColors = {
   hierarchy: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   tabular: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   network: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  timeline: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  treemap: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  heatmap: 'bg-red-500/10 text-red-400 border-red-500/20',
+  geographic: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+  flow: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
 };
 
 export function SchemaManager() {

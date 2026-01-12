@@ -9,13 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit } from 'lucide-react';
+import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp } from 'lucide-react';
 import type { DataBundle, ColumnMapping, DataSource, SemanticSchema } from '@/types';
 
 const dataTypeIcons = {
   hierarchy: GitBranch,
   tabular: FileText,
   network: Network,
+  timeline: Calendar,
+  treemap: LayoutGrid,
+  heatmap: Grid3x3,
+  geographic: MapPin,
+  flow: TrendingUp,
 };
 
 export function BundleManager() {

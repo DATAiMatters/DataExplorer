@@ -1,0 +1,27 @@
+source,target,flow_value,flow_type,description
+Total Revenue,Product Sales,7500000,revenue,Revenue from product sales
+Total Revenue,Service Revenue,2000000,revenue,Revenue from services
+Total Revenue,Licensing,500000,revenue,Licensing and partnerships
+Product Sales,Cost of Goods,3000000,expense,Direct product costs
+Service Revenue,Service Costs,800000,expense,Service delivery costs
+Product Sales,Gross Profit,4500000,profit,Profit after COGS
+Service Revenue,Gross Profit,1200000,profit,Service gross profit
+Licensing,Gross Profit,500000,profit,Licensing profit
+Gross Profit,Engineering,2200000,expense,Engineering department
+Gross Profit,Sales & Marketing,1800000,expense,Sales and marketing
+Gross Profit,Operations,900000,expense,Operations costs
+Gross Profit,G&A,600000,expense,General and administrative
+Gross Profit,Operating Profit,700000,profit,Operating income
+Operating Profit,Taxes,200000,expense,Income taxes
+Operating Profit,Net Profit,500000,profit,Final net profit
+Engineering,R&D,1500000,allocation,Research and development
+Engineering,Product Development,700000,allocation,Product engineering
+Sales & Marketing,Sales,1000000,allocation,Sales team
+Sales & Marketing,Marketing,800000,allocation,Marketing campaigns
+Operations,Customer Support,400000,allocation,Support operations
+Operations,IT Infrastructure,300000,allocation,Technology infrastructure
+Operations,Facilities,200000,allocation,Office and facilities
+G&A,Finance,200000,allocation,Finance team
+G&A,HR,150000,allocation,Human resources
+G&A,Legal,150000,allocation,Legal and compliance
+G&A,Executive,100000,allocation,Executive team

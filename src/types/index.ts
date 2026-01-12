@@ -2,7 +2,7 @@
 // SEMANTIC SCHEMA TYPES
 // ============================================
 
-export type DataType = 'hierarchy' | 'tabular' | 'network';
+export type DataType = 'hierarchy' | 'tabular' | 'network' | 'timeline' | 'treemap' | 'heatmap' | 'geographic' | 'flow';
 
 export interface SemanticRole {
   id: string;

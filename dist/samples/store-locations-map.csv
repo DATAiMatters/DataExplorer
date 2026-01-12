@@ -1,0 +1,21 @@
+location_id,location_name,latitude,longitude,address,region,metric_value,category
+SF-001,San Francisco Flagship,37.7749,-122.4194,100 Market St San Francisco CA,West,2500000,Flagship
+LA-001,Los Angeles Store,34.0522,-118.2437,200 Broadway Los Angeles CA,West,1800000,Standard
+SD-001,San Diego Store,32.7157,-117.1611,300 Harbor Dr San Diego CA,West,950000,Standard
+SEA-001,Seattle Store,47.6062,-122.3321,400 Pike St Seattle WA,Northwest,1200000,Standard
+PDX-001,Portland Store,45.5152,-122.6784,500 Broadway Portland OR,Northwest,880000,Standard
+DEN-001,Denver Store,39.7392,-104.9903,600 16th St Denver CO,Mountain,1050000,Standard
+PHX-001,Phoenix Store,33.4484,-112.0740,700 Central Ave Phoenix AZ,Southwest,920000,Standard
+DAL-001,Dallas Store,32.7767,-96.7970,800 Main St Dallas TX,Southwest,1400000,Standard
+HOU-001,Houston Store,29.7604,-95.3698,900 Texas Ave Houston TX,Southwest,1300000,Standard
+CHI-001,Chicago Flagship,41.8781,-87.6298,1000 Michigan Ave Chicago IL,Midwest,2200000,Flagship
+MIN-001,Minneapolis Store,44.9778,-93.2650,1100 Nicollet Mall Minneapolis MN,Midwest,980000,Standard
+STL-001,St Louis Store,38.6270,-90.1994,1200 Market St St Louis MO,Midwest,750000,Standard
+NYC-001,New York Flagship,40.7128,-74.0060,1300 Broadway New York NY,Northeast,3500000,Flagship
+BOS-001,Boston Store,42.3601,-71.0589,1400 Boylston St Boston MA,Northeast,1600000,Standard
+PHI-001,Philadelphia Store,39.9526,-75.1652,1500 Market St Philadelphia PA,Northeast,1100000,Standard
+DC-001,Washington DC Store,38.9072,-77.0369,1600 K St NW Washington DC,Northeast,1450000,Standard
+ATL-001,Atlanta Store,33.7490,-84.3880,1700 Peachtree St Atlanta GA,Southeast,1250000,Standard
+MIA-001,Miami Store,25.7617,-80.1918,1800 Biscayne Blvd Miami FL,Southeast,1350000,Standard
+ORL-001,Orlando Store,28.5383,-81.3792,1900 International Dr Orlando FL,Southeast,890000,Standard
+CHA-001,Charlotte Store,35.2271,-80.8431,2000 Tryon St Charlotte NC,Southeast,820000,Standard
