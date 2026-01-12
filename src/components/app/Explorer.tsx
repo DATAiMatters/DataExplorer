@@ -4,7 +4,11 @@ import { parseFile } from '@/lib/dataUtils';
 import { HierarchyExplorer } from './visualizations/HierarchyExplorer';
 import { TabularExplorer } from './visualizations/TabularExplorer';
 import { NetworkExplorer } from './visualizations/NetworkExplorer';
-import { PlaceholderExplorer } from './visualizations/PlaceholderExplorer';
+import { HeatMapExplorer } from './visualizations/HeatMapExplorer';
+import { TreeMapExplorer } from './visualizations/TreeMapExplorer';
+import { TimelineExplorer } from './visualizations/TimelineExplorer';
+import { FlowExplorer } from './visualizations/FlowExplorer';
+import { GeographicExplorer } from './visualizations/GeographicExplorer';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -180,12 +184,20 @@ export function Explorer() {
         {selectedSchema?.dataType === 'network' && (
           <NetworkExplorer bundle={selectedBundle} schema={selectedSchema} />
         )}
-        {(selectedSchema?.dataType === 'timeline' ||
-          selectedSchema?.dataType === 'treemap' ||
-          selectedSchema?.dataType === 'heatmap' ||
-          selectedSchema?.dataType === 'geographic' ||
-          selectedSchema?.dataType === 'flow') && (
-          <PlaceholderExplorer bundle={selectedBundle} schemaName={selectedSchema.name} />
+        {selectedSchema?.dataType === 'heatmap' && (
+          <HeatMapExplorer bundle={selectedBundle} schema={selectedSchema} />
+        )}
+        {selectedSchema?.dataType === 'treemap' && (
+          <TreeMapExplorer bundle={selectedBundle} schema={selectedSchema} />
+        )}
+        {selectedSchema?.dataType === 'timeline' && (
+          <TimelineExplorer bundle={selectedBundle} schema={selectedSchema} />
+        )}
+        {selectedSchema?.dataType === 'flow' && (
+          <FlowExplorer bundle={selectedBundle} schema={selectedSchema} />
+        )}
+        {selectedSchema?.dataType === 'geographic' && (
+          <GeographicExplorer bundle={selectedBundle} schema={selectedSchema} />
         )}
       </div>
     </div>
