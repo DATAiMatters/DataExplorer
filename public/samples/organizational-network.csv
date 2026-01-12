@@ -1,0 +1,45 @@
+source_node,target_node,relationship_type,edge_weight,description
+Sarah Chen - CEO,Michael Rodriguez - CTO,reports_to,10,Technology leadership reporting
+Sarah Chen - CEO,Jennifer Kim - CFO,reports_to,10,Financial leadership reporting
+Sarah Chen - CEO,David Thompson - COO,reports_to,10,Operations leadership reporting
+Sarah Chen - CEO,Lisa Martinez - CMO,reports_to,10,Marketing leadership reporting
+Michael Rodriguez - CTO,Alex Kumar - VP Engineering,reports_to,9,Engineering team oversight
+Michael Rodriguez - CTO,Emma Johnson - VP Product,reports_to,9,Product team oversight
+Alex Kumar - VP Engineering,James Park - Director Backend,reports_to,8,Backend engineering leadership
+Alex Kumar - VP Engineering,Maria Santos - Director Frontend,reports_to,8,Frontend engineering leadership
+Alex Kumar - VP Engineering,Robert Lee - Director Infrastructure,reports_to,8,Infrastructure leadership
+James Park - Director Backend,Backend Team A,manages,7,API development team
+James Park - Director Backend,Backend Team B,manages,7,Microservices team
+Maria Santos - Director Frontend,Frontend Team A,manages,7,Web application team
+Maria Santos - Director Frontend,Frontend Team B,manages,7,Mobile app team
+Robert Lee - Director Infrastructure,DevOps Team,manages,7,Infrastructure and deployment
+Robert Lee - Director Infrastructure,Security Team,manages,8,Security and compliance
+Emma Johnson - VP Product,Rachel Green - Sr Product Manager,reports_to,8,Product strategy
+Rachel Green - Sr Product Manager,Product Team A,manages,6,Consumer products
+Rachel Green - Sr Product Manager,Product Team B,manages,6,Enterprise products
+Jennifer Kim - CFO,Tom Wilson - VP Finance,reports_to,9,Financial operations
+Tom Wilson - VP Finance,Accounting Team,manages,7,Financial accounting
+Tom Wilson - VP Finance,FP&A Team,manages,7,Planning and analysis
+David Thompson - COO,Angela Davis - VP Operations,reports_to,9,Business operations
+Angela Davis - VP Operations,Customer Success Team,manages,7,Customer support
+Angela Davis - VP Operations,Sales Operations Team,manages,7,Sales enablement
+Lisa Martinez - CMO,Kevin Brown - VP Marketing,reports_to,9,Marketing strategy
+Kevin Brown - VP Marketing,Digital Marketing Team,manages,7,Online marketing campaigns
+Kevin Brown - VP Marketing,Content Team,manages,7,Content creation
+Kevin Brown - VP Marketing,Brand Team,manages,6,Brand management
+Backend Team A,Frontend Team A,collaborates_with,9,API integration work
+Backend Team B,Frontend Team B,collaborates_with,8,Mobile API development
+DevOps Team,Backend Team A,supports,9,Deployment and monitoring
+DevOps Team,Backend Team B,supports,9,Infrastructure support
+Security Team,Backend Team A,advises,8,Security code reviews
+Security Team,Frontend Team A,advises,8,Security best practices
+Product Team A,Frontend Team A,collaborates_with,10,Feature planning and development
+Product Team B,Backend Team B,collaborates_with,9,Enterprise feature development
+Rachel Green - Sr Product Manager,Emma Johnson - VP Product,mentored_by,7,Product leadership mentoring
+James Park - Director Backend,Alex Kumar - VP Engineering,mentored_by,8,Technical leadership development
+Customer Success Team,Product Team A,provides_feedback_to,8,Customer insights
+Sales Operations Team,Product Team B,provides_feedback_to,7,Enterprise customer needs
+Digital Marketing Team,Product Team A,collaborates_with,6,Go-to-market strategy
+Security Team,DevOps Team,collaborates_with,9,Security infrastructure
+FP&A Team,Product Team A,advises,5,Financial modeling
+FP&A Team,Product Team B,advises,6,Business case analysis

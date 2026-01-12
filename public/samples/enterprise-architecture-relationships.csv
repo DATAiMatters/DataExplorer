@@ -1,0 +1,33 @@
+source_node,target_node,relationship_type,edge_weight,description
+API Gateway,Auth Service,depends_on,10,Gateway routes authentication requests
+API Gateway,User Service,depends_on,8,Gateway routes user management requests
+API Gateway,Order Service,depends_on,9,Gateway routes order processing requests
+Auth Service,User Database,accesses,10,Validates user credentials
+User Service,User Database,accesses,10,CRUD operations on user data
+Order Service,Order Database,accesses,10,CRUD operations on order data
+Order Service,Payment Service,triggers,8,Initiates payment processing
+Order Service,Inventory Service,depends_on,7,Checks product availability
+Payment Service,Payment Gateway,integrates_with,9,Processes credit card transactions
+Payment Service,Notification Service,triggers,6,Sends payment confirmation
+Inventory Service,Product Database,accesses,10,Reads product stock levels
+Notification Service,Email Service,uses,8,Sends transactional emails
+Notification Service,SMS Service,uses,6,Sends SMS notifications
+User Service,Cache Layer,uses,9,Caches frequently accessed user data
+Order Service,Cache Layer,uses,8,Caches order summaries
+Cache Layer,Redis Cluster,deployed_on,10,In-memory data store
+User Database,Primary DB Server,deployed_on,10,PostgreSQL instance
+Order Database,Primary DB Server,deployed_on,10,PostgreSQL instance
+Product Database,Secondary DB Server,deployed_on,10,PostgreSQL instance
+API Gateway,Load Balancer,load_balanced_by,10,Distributes incoming traffic
+Auth Service,Load Balancer,load_balanced_by,9,Multiple auth instances
+Email Service,SMTP Server,integrates_with,10,External email provider
+Monitoring Service,API Gateway,monitors,8,Tracks gateway health
+Monitoring Service,Auth Service,monitors,8,Tracks auth service health
+Monitoring Service,User Service,monitors,7,Tracks user service health
+Monitoring Service,Order Service,monitors,8,Tracks order service health
+Logging Service,API Gateway,collects_from,9,Aggregates gateway logs
+Logging Service,Auth Service,collects_from,9,Aggregates auth logs
+Backup Service,User Database,backs_up,10,Daily database backups
+Backup Service,Order Database,backs_up,10,Daily database backups
+Security Scanner,API Gateway,scans,7,Vulnerability assessments
+Security Scanner,Auth Service,scans,9,Security audits

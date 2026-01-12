@@ -1,0 +1,58 @@
+source_node,target_node,relationship_type,edge_weight,description
+Raw Sales Data,Extract Sales ETL,feeds_into,10,Source data ingestion
+Raw Customer Data,Extract Customer ETL,feeds_into,10,Customer data ingestion
+Raw Product Data,Extract Product ETL,feeds_into,10,Product catalog ingestion
+Raw Inventory Data,Extract Inventory ETL,feeds_into,10,Stock level ingestion
+Extract Sales ETL,Transform Sales,precedes,10,Data cleaning and transformation
+Extract Customer ETL,Transform Customer,precedes,10,Customer data normalization
+Extract Product ETL,Transform Product,precedes,10,Product data enrichment
+Extract Inventory ETL,Transform Inventory,precedes,10,Inventory data aggregation
+Transform Sales,Validate Sales,precedes,9,Data quality checks
+Transform Customer,Validate Customer,precedes,9,Customer data validation
+Transform Product,Validate Product,precedes,9,Product data validation
+Transform Inventory,Validate Inventory,precedes,9,Inventory data validation
+Validate Sales,Load Sales DWH,precedes,10,Load to data warehouse
+Validate Customer,Load Customer DWH,precedes,10,Load to data warehouse
+Validate Product,Load Product DWH,precedes,10,Load to data warehouse
+Validate Inventory,Load Inventory DWH,precedes,10,Load to data warehouse
+Load Sales DWH,Sales Fact Table,writes_to,10,Transactional sales facts
+Load Customer DWH,Customer Dimension,writes_to,10,Customer master data
+Load Product DWH,Product Dimension,writes_to,10,Product catalog
+Load Inventory DWH,Inventory Fact Table,writes_to,10,Stock level snapshots
+Sales Fact Table,Daily Sales Aggregate,feeds_into,9,Daily rollup job
+Sales Fact Table,Monthly Sales Aggregate,feeds_into,8,Monthly rollup job
+Sales Fact Table,Revenue Report,feeds_into,9,Financial reporting
+Customer Dimension,Customer Segmentation,feeds_into,8,Marketing analytics
+Customer Dimension,Churn Analysis,feeds_into,7,Retention modeling
+Product Dimension,Product Performance,feeds_into,8,Product analytics
+Product Dimension,Pricing Analysis,feeds_into,7,Pricing optimization
+Inventory Fact Table,Stock Alert System,feeds_into,10,Low stock notifications
+Inventory Fact Table,Demand Forecast,feeds_into,8,Inventory planning
+Daily Sales Aggregate,Sales Dashboard,feeds_into,10,Executive dashboard
+Monthly Sales Aggregate,Sales Dashboard,feeds_into,9,Trend analysis view
+Customer Segmentation,Marketing Campaigns,feeds_into,9,Targeted campaigns
+Churn Analysis,Retention Campaigns,feeds_into,8,Win-back programs
+Product Performance,Merchandising,feeds_into,7,Product placement decisions
+Demand Forecast,Procurement System,feeds_into,9,Purchase order generation
+Revenue Report,Finance System,feeds_into,10,General ledger integration
+Sales Fact Table,Customer Lifetime Value,feeds_into,8,CLV calculation
+Customer Dimension,Customer Lifetime Value,depends_on,9,Customer attributes needed
+Product Dimension,Revenue Report,depends_on,8,Product categorization
+Inventory Fact Table,Reorder Point Calculator,feeds_into,9,Automatic reordering
+Sales Dashboard,Alert Engine,triggers,7,Anomaly detection alerts
+Alert Engine,Notification Service,triggers,9,Email and SMS alerts
+Data Quality Monitor,Extract Sales ETL,monitors,8,ETL job monitoring
+Data Quality Monitor,Extract Customer ETL,monitors,8,Data quality checks
+Data Quality Monitor,Extract Product ETL,monitors,7,Pipeline health
+Data Quality Monitor,Extract Inventory ETL,monitors,8,Job execution tracking
+Master Data Management,Customer Dimension,synchronizes_with,9,Customer MDM sync
+Master Data Management,Product Dimension,synchronizes_with,9,Product MDM sync
+API Layer,Sales Fact Table,queries,9,Real-time sales API
+API Layer,Customer Dimension,queries,8,Customer lookup API
+API Layer,Product Dimension,queries,8,Product catalog API
+ML Model Training,Sales Fact Table,trains_on,10,Historical sales data
+ML Model Training,Customer Dimension,trains_on,9,Customer features
+ML Model Training,Product Dimension,trains_on,8,Product features
+ML Model Training,Demand Forecast,produces,10,Forecast predictions
+Archive Service,Sales Fact Table,archives,6,Historical data archival
+Archive Service,Inventory Fact Table,archives,6,Old inventory snapshots
