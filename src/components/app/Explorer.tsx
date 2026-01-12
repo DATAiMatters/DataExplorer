@@ -4,6 +4,7 @@ import { parseFile } from '@/lib/dataUtils';
 import { HierarchyExplorer } from './visualizations/HierarchyExplorer';
 import { TabularExplorer } from './visualizations/TabularExplorer';
 import { NetworkExplorer } from './visualizations/NetworkExplorer';
+import { PlaceholderExplorer } from './visualizations/PlaceholderExplorer';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -178,6 +179,13 @@ export function Explorer() {
         )}
         {selectedSchema?.dataType === 'network' && (
           <NetworkExplorer bundle={selectedBundle} schema={selectedSchema} />
+        )}
+        {(selectedSchema?.dataType === 'timeline' ||
+          selectedSchema?.dataType === 'treemap' ||
+          selectedSchema?.dataType === 'heatmap' ||
+          selectedSchema?.dataType === 'geographic' ||
+          selectedSchema?.dataType === 'flow') && (
+          <PlaceholderExplorer bundle={selectedBundle} schemaName={selectedSchema.name} />
         )}
       </div>
     </div>
