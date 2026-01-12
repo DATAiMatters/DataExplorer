@@ -8,6 +8,7 @@ import { RelationshipManager } from './RelationshipManager';
 import { WelcomeTour } from '@/components/ui/WelcomeTour';
 import { ContextualHelp } from '@/components/ui/ContextualHelp';
 import { DevGuide } from '@/components/ui/DevGuide';
+import { FeedbackButton } from '@/components/ui/FeedbackDialog';
 
 const WELCOME_TOUR_KEY = 'data-explorer-welcome-tour-completed';
 
@@ -49,6 +50,9 @@ export function AppLayout() {
         {/* Dev/Techie Guide - Always available */}
         <DevGuide />
       </main>
+
+      {/* Feedback Button - Always available */}
+      <FeedbackButton />
 
       {/* Welcome Tour - First time only */}
       {showWelcomeTour && (
