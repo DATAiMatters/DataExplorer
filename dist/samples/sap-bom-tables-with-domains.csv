@@ -1,0 +1,31 @@
+table_name,domain,description
+MAST,Material Master,Material to BOM Link
+STKO,BOM,BOM Header
+STPO,BOM,BOM Item (Components)
+MARA,Material Master,General Material Data
+MARC,Material Master,Plant Data for Material
+MAKT,Material Master,Material Descriptions
+MBEW,Material Master,Material Valuation
+CSKU,Configuration,Configuration Profile
+KSSK,Configuration,Characteristic Value Assignment
+KLAH,Configuration,Class Header
+CABN,Configuration,Characteristic Master
+CAWN,Configuration,Characteristic Values
+PLMZ,Production Planning,Allocation of Material to BOM
+PKHD,Production Planning,Kanban Container Header
+PLPO,Production Planning,Task List Operations
+PLKO,Production Planning,Task List Header
+MAPL,Production Planning,Assignment of Task Lists
+CRHD,Production Planning,Work Center Header
+CRCA,Production Planning,Work Center Capacities
+EKPO,Purchasing,Purchasing Document Item
+EKKO,Purchasing,Purchasing Document Header
+LFA1,Purchasing,Vendor Master
+EINA,Purchasing,Purchasing Info Record
+EINE,Purchasing,Purchasing Info Conditions
+CKIS,Costing,Item Costing
+KEKO,Costing,Product Costing Header
+RESB,Production Orders,Reservation/Dependent Requirements
+AFKO,Production Orders,Order Header
+AUFK,Production Orders,Order Master
+JEST,Cross-functional,Individual Object Status

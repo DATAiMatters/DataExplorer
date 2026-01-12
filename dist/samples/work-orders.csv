@@ -1,0 +1,26 @@
+WORK_ORDER_ID,FLOC,WORK_TYPE,PRIORITY,STATUS,CREATED_DATE,COMPLETED_DATE,LABOR_HOURS,MATERIAL_COST,TECHNICIAN
+WO-001,PLANT-A-PROD-L1-M1,Preventive,Low,Completed,2024-01-15,2024-01-16,4,250,John Smith
+WO-002,PLANT-A-PROD-L1-M2,Corrective,High,Completed,2024-01-18,2024-01-18,8,1200,Jane Doe
+WO-003,PLANT-A-UTIL-PWR-T1,Inspection,Medium,Completed,2024-01-20,2024-01-21,2,0,Bob Wilson
+WO-004,PLANT-B-PROD-L1-M1,Preventive,Low,Completed,2024-01-22,2024-01-23,3,180,John Smith
+WO-005,PLANT-A-PROD-L2-M3,Corrective,Critical,Completed,2024-01-25,2024-01-25,12,3500,Jane Doe
+WO-006,PLANT-A-UTIL-HVAC-CH,Preventive,Medium,In Progress,2024-01-28,,6,450,Mike Johnson
+WO-007,PLANT-B-UTIL-PWR,Emergency,Critical,Completed,2024-02-01,2024-02-01,16,8000,Bob Wilson
+WO-008,PLANT-A-PROD-L1-M1,Preventive,Low,Planned,2024-02-15,,,0,John Smith
+WO-009,PLANT-A-PROD-L2-M1,Corrective,High,In Progress,2024-02-05,,4,800,Jane Doe
+WO-010,PLANT-B-PROD-L2-M2,Inspection,Low,Completed,2024-02-08,2024-02-09,1,0,Mike Johnson
+WO-011,PLANT-A-UTIL-PWR-GEN,Preventive,Medium,Completed,2024-02-10,2024-02-11,5,320,Bob Wilson
+WO-012,PLANT-B-PROD-L1-M3,Corrective,High,Completed,2024-02-12,2024-02-13,7,950,John Smith
+WO-013,PLANT-A-PROD-L1-M3,Preventive,Low,Completed,2024-02-14,2024-02-15,3,200,Jane Doe
+WO-014,PLANT-A-UTIL-HVAC-AH1,Inspection,Medium,Planned,2024-02-20,,,0,Mike Johnson
+WO-015,PLANT-B-UTIL-HVAC,Corrective,Medium,In Progress,2024-02-18,,2,150,Bob Wilson
+WO-016,PLANT-A-PROD-L2-M2,Emergency,Critical,Completed,2024-02-19,2024-02-19,10,5200,John Smith
+WO-017,PLANT-B-PROD-L2-M1,Preventive,Low,Completed,2024-02-22,2024-02-23,4,280,Jane Doe
+WO-018,PLANT-A-UTIL-PWR-T2,Inspection,Medium,Completed,2024-02-25,2024-02-26,2,0,Mike Johnson
+WO-019,PLANT-A-PROD-L1-M2,Corrective,High,Planned,2024-03-01,,,0,Bob Wilson
+WO-020,PLANT-B-PROD-L1-M2,Preventive,Low,Completed,2024-02-28,2024-03-01,3,190,John Smith
+WO-021,PLANT-A-UTIL-HVAC-AH2,Corrective,Medium,Completed,2024-03-02,2024-03-03,5,420,Jane Doe
+WO-022,PLANT-B-UTIL-PWR,Preventive,Medium,In Progress,2024-03-05,,3,0,Mike Johnson
+WO-023,PLANT-A-PROD-L2-M3,Inspection,Low,Completed,2024-03-08,2024-03-09,1,0,Bob Wilson
+WO-024,PLANT-B-PROD-L2-M2,Corrective,High,Completed,2024-03-10,2024-03-11,6,880,John Smith
+WO-025,PLANT-A-UTIL-PWR-T1,Preventive,Medium,Planned,2024-03-15,,,0,Jane Doe
