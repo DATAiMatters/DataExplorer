@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { SemanticSchema, DataBundle, ViewMode, ExplorerState } from '@/types';
 import { defaultSchemas } from '@/data/schemas';
+import {
+  defaultRelationshipTypeConfig,
+  type RelationshipTypeConfig,
+  type RelationshipType,
+} from '@/config/relationshipTypes';
 
 interface AppStore {
   // State
@@ -9,6 +14,7 @@ interface AppStore {
   bundles: DataBundle[];
   viewMode: ViewMode;
   explorerState: ExplorerState;
+  relationshipTypeConfig: RelationshipTypeConfig;
 
   // Schema actions
   addSchema: (schema: SemanticSchema) => void;
@@ -23,7 +29,7 @@ interface AppStore {
 
   // View actions
   setViewMode: (mode: ViewMode) => void;
-  
+
   // Explorer actions
   setSelectedBundle: (id: string | null) => void;
   setZoomLevel: (level: number) => void;
@@ -31,6 +37,12 @@ interface AppStore {
   pushBreadcrumb: (nodeId: string) => void;
   popBreadcrumb: () => void;
   resetBreadcrumb: () => void;
+
+  // Relationship type actions
+  addRelationshipType: (type: RelationshipType) => void;
+  updateRelationshipType: (name: string, updates: Partial<RelationshipType>) => void;
+  deleteRelationshipType: (name: string) => void;
+  resetRelationshipTypes: () => void;
 
   // Import/Export
   exportConfig: () => string;
@@ -52,6 +64,7 @@ export const useAppStore = create<AppStore>()(
       bundles: [],
       viewMode: 'bundles',
       explorerState: initialExplorerState,
+      relationshipTypeConfig: defaultRelationshipTypeConfig,
 
       // Schema actions
       addSchema: (schema) =>
@@ -150,6 +163,36 @@ export const useAppStore = create<AppStore>()(
           },
         })),
 
+      // Relationship type actions
+      addRelationshipType: (type) =>
+        set((state) => ({
+          relationshipTypeConfig: {
+            ...state.relationshipTypeConfig,
+            types: [...state.relationshipTypeConfig.types, type],
+          },
+        })),
+
+      updateRelationshipType: (name, updates) =>
+        set((state) => ({
+          relationshipTypeConfig: {
+            ...state.relationshipTypeConfig,
+            types: state.relationshipTypeConfig.types.map((t) =>
+              t.name === name ? { ...t, ...updates } : t
+            ),
+          },
+        })),
+
+      deleteRelationshipType: (name) =>
+        set((state) => ({
+          relationshipTypeConfig: {
+            ...state.relationshipTypeConfig,
+            types: state.relationshipTypeConfig.types.filter((t) => t.name !== name),
+          },
+        })),
+
+      resetRelationshipTypes: () =>
+        set({ relationshipTypeConfig: defaultRelationshipTypeConfig }),
+
       // Import/Export
       exportConfig: () => {
         const state = get();
@@ -196,6 +239,7 @@ export const useAppStore = create<AppStore>()(
             parsedData: b.source.parsedData.length > 1000 ? [] : b.source.parsedData,
           },
         })),
+        relationshipTypeConfig: state.relationshipTypeConfig,
       }),
     }
   )
