@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { BundleManager } from './BundleManager';
 import { SchemaManager } from './SchemaManager';
 import { Explorer } from './Explorer';
+import { RelationshipManager } from './RelationshipManager';
 
 export function AppLayout() {
   const viewMode = useAppStore((s) => s.viewMode);
@@ -13,6 +14,7 @@ export function AppLayout() {
       <main className="flex-1 overflow-hidden">
         {viewMode === 'bundles' && <BundleManager />}
         {viewMode === 'schemas' && <SchemaManager />}
+        {viewMode === 'relationships' && <RelationshipManager />}
         {viewMode === 'explorer' && <Explorer />}
       </main>
     </div>
