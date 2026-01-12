@@ -136,6 +136,20 @@ export const defaultSchemas: SemanticSchema[] = [
         required: false,
         dataType: 'string',
       },
+      {
+        id: 'relationship_type',
+        name: 'Relationship Type',
+        description: 'Type of relationship between nodes (e.g., sources from, depends on, aggregates)',
+        required: false,
+        dataType: 'string',
+      },
+      {
+        id: 'cardinality',
+        name: 'Cardinality',
+        description: 'Cardinality of the relationship (e.g., 1:1, 1:N, N:M, N:1)',
+        required: false,
+        dataType: 'string',
+      },
     ],
   },
 ];

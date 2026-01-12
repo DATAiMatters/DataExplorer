@@ -70,6 +70,13 @@ export interface HierarchyNode {
 }
 
 // Tabular-specific types
+export interface QualityIssue {
+  type: 'high_nulls' | 'low_cardinality' | 'outliers' | 'format_inconsistency' | 'duplicates';
+  severity: 'error' | 'warning' | 'info';
+  message: string;
+  count?: number;
+}
+
 export interface TabularProfile {
   column: string;
   displayName: string;
@@ -85,6 +92,8 @@ export interface TabularProfile {
     median: number;
     stdDev: number;
   };
+  qualityScore: number; // 0-100
+  qualityIssues: QualityIssue[];
 }
 
 // Network-specific types
@@ -100,6 +109,8 @@ export interface NetworkEdge {
   target: string;
   weight?: number;
   label?: string;
+  relationshipType?: string;
+  cardinality?: string;
 }
 
 export interface NetworkData {
@@ -111,7 +122,7 @@ export interface NetworkData {
 // UI STATE TYPES
 // ============================================
 
-export type ViewMode = 'bundles' | 'schemas' | 'explorer';
+export type ViewMode = 'bundles' | 'schemas' | 'explorer' | 'relationships';
 
 export interface ExplorerState {
   selectedBundleId: string | null;
