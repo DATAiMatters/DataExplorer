@@ -2,6 +2,11 @@
 
 An immersive data visualization tool for exploring hierarchical, tabular, and network datasets. Built with React, TypeScript, D3.js, and Tailwind CSS.
 
+**Author:** Pedro Cardoso - The Data Ninja
+📧 mrtechie@gmail.com
+💼 [LinkedIn](https://www.linkedin.com/in/thedataninja/)
+🔗 [Linktree](https://linktr.ee/thedataninja)
+
 ## Features
 
 ### 🗂️ Multiple Data Types
@@ -17,6 +22,7 @@ An immersive data visualization tool for exploring hierarchical, tabular, and ne
   - Automatic type detection (string, number, date, boolean)
   - Top values for categorical fields
   - Numeric statistics (min, max, mean, median, std dev)
+  - Data grid view with sortable columns and global search
 
 - **Network** - Visualize graph/relationship data
   - Force-directed layout
@@ -93,6 +99,7 @@ data-explorer/
 │   │   │   └── visualizations/
 │   │   │       ├── HierarchyExplorer.tsx  # Treemap + Tree views
 │   │   │       ├── TabularExplorer.tsx    # Data profiling
+│   │   │       ├── DataGridView.tsx       # Sortable data grid
 │   │   │       └── NetworkExplorer.tsx    # Force-directed graph
 │   │   └── ui/                     # shadcn/ui components
 │   ├── data/
@@ -131,8 +138,10 @@ data-explorer/
 1. Click **"Explore"** on any bundle card
 2. Use the visualization controls:
    - **Hierarchy**: Toggle between Treemap/Tree views, switch orientation
-   - **Tabular**: Search and sort columns, view statistics
+   - **Tabular**: Search and sort columns, view statistics, click "View Data" to see raw data in sortable grid
    - **Network**: Drag nodes, adjust physics, zoom/pan
+
+**Tip:** Use your operating system's screenshot tool (Cmd+Shift+4 on Mac, Win+Shift+S on Windows) to capture visualizations.
 
 ### 3. Reload Data
 
@@ -198,16 +207,17 @@ Each schema type has predefined roles:
 - **Tailwind CSS** - Styling
 - **shadcn/ui** - UI components
 - **D3.js** - Visualizations
+- **TanStack Table** - Data grid
 - **Zustand** - State management
 - **Papaparse** - CSV parsing
 
 ## Roadmap
 
+- [ ] Export visualizations as images (PNG/SVG)
 - [ ] Database connectors (PostgreSQL, MySQL)
 - [ ] Multi-file joins for attached metrics
 - [ ] Additional visualizations (sunburst, icicle, sankey)
 - [ ] Data quality scoring
-- [ ] Export visualizations as images
 - [ ] Collaborative features
 
 ## Contributing

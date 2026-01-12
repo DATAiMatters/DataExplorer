@@ -1,5 +1,8 @@
 # Architecture Overview
 
+**Author:** Pedro Cardoso - The Data Ninja
+📧 mrtechie@gmail.com | 💼 [LinkedIn](https://www.linkedin.com/in/thedataninja/) | 🔗 [Linktree](https://linktr.ee/thedataninja)
+
 ## Design Principles
 
 ### 1. Schema-Driven

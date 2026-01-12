@@ -2,6 +2,10 @@
 
 This document captures the purpose, design decisions, and rationale behind Data Explorer to maintain continuity across development sessions.
 
+**Author:** Pedro Cardoso - The Data Ninja
+📧 mrtechie@gmail.com | 💼 [LinkedIn](https://www.linkedin.com/in/thedataninja/) | 🔗 [Linktree](https://linktr.ee/thedataninja)
+**Last Updated:** January 11, 2026
+
 ## Project Purpose
 
 **Data Explorer** is a tool for visualizing and exploring complex datasets through immersive, spatial navigation - going beyond traditional grids and dashboards. The primary use cases are:
@@ -96,9 +100,12 @@ The target users are data analysts and engineers who need to explore and underst
 - Completeness and uniqueness metrics
 - Top values for categorical fields
 
-**Why not a data grid?**
-- Profiling gives faster insight into data quality
-- Raw data viewing can come later as a secondary feature
+**Data Grid View:**
+- Added as secondary view via "View Data" button
+- Sortable columns (click headers)
+- Global search across all columns
+- Uses TanStack Table for performance
+- Easy toggle back to profiling view
 
 ### Network View
 
@@ -118,6 +125,7 @@ The target users are data analysts and engineers who need to explore and underst
 | Tailwind + shadcn/ui | Material UI, Chakra | Customizable, good dark theme |
 | Zustand | Redux, Jotai | Simple API, built-in persistence |
 | D3.js | Recharts, Visx | Full control for custom viz |
+| TanStack Table | AG Grid, react-data-grid | Headless, lightweight, flexible |
 | Papaparse | csv-parse, Papa | Battle-tested, browser-friendly |
 
 ### State Management
@@ -145,6 +153,19 @@ data/               → Static data (default schemas)
 4. **Tree view:** Alternative to treemap for hierarchy
 5. **Tree orientation:** Horizontal and vertical layouts
 6. **Reload data:** Update bundle with new file, preserve mappings
+7. **Data grid view:** Sortable, searchable table view for tabular data using TanStack Table
+8. **Data quality scoring:** Automated quality assessment (0-100 score) for each column with:
+   - Completeness check (40% weight) - detects high null rates
+   - Consistency check (30% weight) - identifies low cardinality and statistical outliers
+   - Validity check (30% weight) - finds format inconsistencies in string data
+   - Visual quality badges on profile cards (green ≥80, amber ≥60, red <60)
+   - Overall quality score in TabularExplorer header
+   - Expandable issues section showing detected problems with severity levels
+9. **Network node grouping:** Color-coded nodes by category/domain with:
+   - Support for node_group column mapping in schema
+   - Automatic color assignment using D3 categorical color scale (Tableau10)
+   - Legend showing all groups and their colors
+   - Group display in node hover tooltip
 
 ## Known Limitations
 
@@ -157,9 +178,9 @@ data/               → Static data (default schemas)
 ## Roadmap / Future Ideas
 
 ### Near-term
+- [ ] Export visualizations as images (PNG/SVG)
 - [ ] Edit bundle mappings after creation
 - [ ] Duplicate/clone bundles
-- [ ] Export visualizations as PNG/SVG
 - [ ] Keyboard navigation
 
 ### Medium-term
@@ -191,5 +212,4 @@ These mirror real-world data structures from ERP systems.
 
 ---
 
-*Last updated: January 2025*
-*Initial development conversation archived in Claude.ai project*
+*Last updated: January 11, 2026 by Pedro Cardoso*

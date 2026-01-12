@@ -2,6 +2,9 @@
 
 Thank you for your interest in contributing! Here's how you can help.
 
+**Maintainer:** Pedro Cardoso - The Data Ninja
+📧 mrtechie@gmail.com | 💼 [LinkedIn](https://www.linkedin.com/in/thedataninja/) | 🔗 [Linktree](https://linktr.ee/thedataninja)
+
 ## Development Setup
 
 1. Fork and clone the repository
