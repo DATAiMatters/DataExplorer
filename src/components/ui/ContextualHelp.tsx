@@ -12,19 +12,16 @@ interface Props {
 export function ContextualHelp({ view }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Skip help for relationships view for now (has its own)
-  if (view === 'explorer') return null;
-
   const content: ViewHelp | undefined = helpContent.views[view as keyof typeof helpContent.views];
 
   if (!content) return null;
 
   return (
     <>
-      {/* Help Button - Floating */}
+      {/* Help Button - Floating (bottom-right, stacked) */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-12 h-12 bg-emerald-600 hover:bg-emerald-700 rounded-full shadow-lg flex items-center justify-center z-40 transition-all hover:scale-110"
+        className="fixed bottom-6 right-8 w-12 h-12 bg-emerald-600 hover:bg-emerald-700 rounded-full shadow-lg flex items-center justify-center z-40 transition-all hover:scale-110"
         title="Get Help"
       >
         <HelpCircle className="w-6 h-6 text-white" />

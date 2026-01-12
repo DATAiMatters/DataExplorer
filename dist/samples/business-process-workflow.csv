@@ -1,0 +1,40 @@
+source_node,target_node,relationship_type,edge_weight,description
+Customer,Submit Order,initiates,10,Customer places order online
+Submit Order,Validate Order,precedes,10,Order validation step
+Validate Order,Check Inventory,precedes,9,Verify product availability
+Check Inventory,Reserve Items,precedes,8,Lock inventory for order
+Reserve Items,Calculate Shipping,precedes,7,Determine shipping costs
+Calculate Shipping,Process Payment,precedes,10,Charge customer payment
+Process Payment,Confirm Order,precedes,9,Send order confirmation
+Confirm Order,Notify Warehouse,triggers,10,Alert warehouse team
+Notify Warehouse,Pick Items,precedes,9,Warehouse picks products
+Pick Items,Pack Order,precedes,10,Package items for shipping
+Pack Order,Generate Label,precedes,8,Create shipping label
+Generate Label,Ship Order,precedes,10,Hand off to carrier
+Ship Order,Update Tracking,triggers,9,Provide tracking number
+Update Tracking,Notify Customer,triggers,8,Send shipping notification
+Notify Customer,Deliver Order,precedes,7,Carrier delivers package
+Deliver Order,Request Feedback,triggers,6,Ask for product review
+Request Feedback,Close Order,precedes,5,Mark order as complete
+Process Payment,Handle Payment Failure,may_lead_to,8,Payment processing error path
+Handle Payment Failure,Notify Customer,triggers,9,Alert customer of issue
+Handle Payment Failure,Cancel Order,may_lead_to,10,Cancel if payment fails
+Check Inventory,Out of Stock,may_lead_to,7,Insufficient inventory path
+Out of Stock,Notify Customer,triggers,10,Alert customer
+Out of Stock,Offer Backorder,alternative_to,6,Suggest waiting for restock
+Offer Backorder,Cancel Order,alternative_to,5,Customer cancels instead
+Ship Order,Shipment Delayed,may_lead_to,5,Carrier delay scenario
+Shipment Delayed,Notify Customer,triggers,9,Update customer on delay
+Deliver Order,Delivery Failed,may_lead_to,6,Delivery attempt failed
+Delivery Failed,Retry Delivery,precedes,8,Schedule redelivery
+Retry Delivery,Return to Sender,alternative_to,7,Customer unavailable
+Customer,Track Order,initiates,8,Customer checks order status
+Track Order,View Tracking,precedes,9,Display tracking information
+Customer,Initiate Return,initiates,7,Customer requests return
+Initiate Return,Approve Return,precedes,9,Review return request
+Approve Return,Generate Return Label,precedes,8,Create return shipping label
+Generate Return Label,Receive Return,precedes,7,Warehouse receives item
+Receive Return,Inspect Item,precedes,9,Quality check returned item
+Inspect Item,Process Refund,precedes,10,Issue refund to customer
+Process Refund,Close Return,precedes,8,Complete return process
+Close Order,Archive Order,precedes,6,Move to historical records

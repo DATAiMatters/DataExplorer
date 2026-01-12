@@ -7,7 +7,7 @@ import { NetworkExplorer } from './visualizations/NetworkExplorer';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Compass, RefreshCw, Upload } from 'lucide-react';
+import { ArrowLeft, Compass, RefreshCw, Upload, Plus } from 'lucide-react';
 
 export function Explorer() {
   const bundles = useAppStore((s) => s.bundles);
@@ -155,6 +155,17 @@ export function Explorer() {
             ))}
           </SelectContent>
         </Select>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setViewMode('bundles')}
+          className="border-zinc-700 hover:bg-zinc-800"
+          title="Create a new bundle"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Bundle
+        </Button>
       </header>
 
       {/* Visualization Area */}

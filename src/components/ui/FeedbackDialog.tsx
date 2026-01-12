@@ -250,10 +250,10 @@ export function FeedbackButton() {
 
   return (
     <>
-      {/* Feedback Button - Floating (top-right corner) */}
+      {/* Feedback Button - Floating (bottom-right, stacked) */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed top-6 right-6 w-12 h-12 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg flex items-center justify-center z-40 transition-all hover:scale-110"
+        className="fixed bottom-6 right-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg flex items-center justify-center z-40 transition-all hover:scale-110"
         title="Send Feedback"
       >
         <MessageSquare className="w-6 h-6 text-white" />

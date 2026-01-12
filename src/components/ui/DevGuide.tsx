@@ -20,10 +20,10 @@ export function DevGuide() {
 
   return (
     <>
-      {/* Dev/Techie Button - Floating (opposite corner from help) */}
+      {/* Dev/Techie Button - Floating (bottom-right, stacked) */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 w-12 h-12 bg-violet-600 hover:bg-violet-700 rounded-full shadow-lg flex items-center justify-center z-40 transition-all hover:scale-110"
+        className="fixed bottom-6 right-24 w-12 h-12 bg-violet-600 hover:bg-violet-700 rounded-full shadow-lg flex items-center justify-center z-40 transition-all hover:scale-110"
         title="Developer Guide"
       >
         <Code2 className="w-6 h-6 text-white" />
