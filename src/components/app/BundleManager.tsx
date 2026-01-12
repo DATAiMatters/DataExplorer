@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw } from 'lucide-react';
+import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit } from 'lucide-react';
 import type { DataBundle, ColumnMapping, DataSource, SemanticSchema } from '@/types';
 
 const dataTypeIcons = {
@@ -29,6 +29,7 @@ export function BundleManager() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [reloadingBundleId, setReloadingBundleId] = useState<string | null>(null);
+  const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
 
   const handleExplore = (bundleId: string) => {
     setSelectedBundle(bundleId);
@@ -44,10 +45,20 @@ export function BundleManager() {
       const rawData = ev.target?.result as string;
       try {
         const { data, columns } = parseFile(file.name, rawData);
-        
-        // Update the bundle with new data, keeping existing mappings that still apply
+
+        // Check which mappings are now invalid
         const validMappings = bundle.mappings.filter(m => columns.includes(m.sourceColumn));
-        
+        const invalidMappings = bundle.mappings.filter(m => !columns.includes(m.sourceColumn));
+        const hasBrokenMappings = invalidMappings.length > 0;
+
+        // Get schema to check if required roles are now missing
+        const schema = schemas.find(s => s.id === bundle.schemaId);
+        const requiredRoles = schema?.roles.filter(r => r.required) || [];
+        const missingRequiredRoles = requiredRoles.filter(
+          role => !validMappings.some(m => m.roleId === role.id)
+        );
+
+        // Update the bundle with new data
         updateBundle(bundleId, {
           source: {
             type: file.name.endsWith('.json') ? 'json' : 'csv',
@@ -58,14 +69,22 @@ export function BundleManager() {
           },
           mappings: validMappings,
         });
-        
+
         setReloadingBundleId(null);
+
+        // If mappings are broken or required roles are missing, open the editor immediately
+        if (hasBrokenMappings || missingRequiredRoles.length > 0) {
+          // Small delay to allow the dialog to close first
+          setTimeout(() => {
+            setEditingBundleId(bundleId);
+          }, 100);
+        }
       } catch (err) {
         console.error('Failed to parse file:', err);
       }
     };
     reader.readAsText(file);
-  }, [bundles, updateBundle]);
+  }, [bundles, schemas, updateBundle]);
 
   return (
     <div className="h-full flex flex-col p-6">
@@ -152,6 +171,35 @@ export function BundleManager() {
                         <Play className="w-3 h-3 mr-1" />
                         Explore
                       </Button>
+                      <Dialog open={editingBundleId === bundle.id} onOpenChange={(open) => setEditingBundleId(open ? bundle.id : null)}>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-zinc-700 hover:bg-zinc-800"
+                            title="Edit column mappings"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col bg-zinc-900 border-zinc-800">
+                          <DialogHeader>
+                            <DialogTitle>Edit Column Mappings</DialogTitle>
+                            <DialogDescription>
+                              Update how columns are mapped to semantic roles for "{bundle.name}"
+                            </DialogDescription>
+                          </DialogHeader>
+                          <BundleEditor
+                            bundle={bundle}
+                            schema={schema}
+                            onComplete={(updatedMappings) => {
+                              updateBundle(bundle.id, { mappings: updatedMappings });
+                              setEditingBundleId(null);
+                            }}
+                            onCancel={() => setEditingBundleId(null)}
+                          />
+                        </DialogContent>
+                      </Dialog>
                       <Dialog open={reloadingBundleId === bundle.id} onOpenChange={(open) => setReloadingBundleId(open ? bundle.id : null)}>
                         <DialogTrigger asChild>
                           <Button
@@ -170,8 +218,8 @@ export function BundleManager() {
                               Upload a new file to replace the data in "{bundle.name}". Column mappings will be preserved where possible.
                             </DialogDescription>
                           </DialogHeader>
-                          <ReloadFileUploader 
-                            bundleId={bundle.id} 
+                          <ReloadFileUploader
+                            bundleId={bundle.id}
                             onFileSelect={handleReloadFile}
                             currentFileName={bundle.source.fileName}
                           />
@@ -461,6 +509,142 @@ function BundleCreator({ schemas, onComplete, onCancel }: BundleCreatorProps) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================
+// BUNDLE EDITOR COMPONENT
+// ============================================
+
+interface BundleEditorProps {
+  bundle: DataBundle;
+  schema: SemanticSchema | undefined;
+  onComplete: (mappings: ColumnMapping[]) => void;
+  onCancel: () => void;
+}
+
+function BundleEditor({ bundle, schema, onComplete, onCancel }: BundleEditorProps) {
+  const [mappings, setMappings] = useState<ColumnMapping[]>(bundle.mappings);
+
+  if (!schema) {
+    return (
+      <div className="p-4 text-center text-zinc-500">
+        Schema not found. Cannot edit mappings.
+      </div>
+    );
+  }
+
+  const handleMappingChange = (roleId: string, column: string) => {
+    setMappings((prev) => {
+      const existing = prev.find((m) => m.roleId === roleId);
+      if (existing) {
+        if (!column) {
+          return prev.filter((m) => m.roleId !== roleId);
+        }
+        return prev.map((m) =>
+          m.roleId === roleId ? { ...m, sourceColumn: column, displayName: column } : m
+        );
+      }
+      if (column) {
+        return [...prev, { sourceColumn: column, roleId, displayName: column }];
+      }
+      return prev;
+    });
+  };
+
+  const handleDisplayNameChange = (roleId: string, displayName: string) => {
+    setMappings((prev) =>
+      prev.map((m) => (m.roleId === roleId ? { ...m, displayName } : m))
+    );
+  };
+
+  const requiredRoles = schema.roles.filter((r) => r.required);
+  const hasRequiredMappings = requiredRoles.every((r) =>
+    mappings.some((m) => m.roleId === r.id)
+  );
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col">
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-4">
+          <div className="bg-zinc-800/50 rounded-lg p-3 mb-4">
+            <p className="text-sm text-zinc-400">
+              File: <span className="text-zinc-200">{bundle.source.fileName}</span>
+            </p>
+            <p className="text-sm text-zinc-400">
+              Schema: <span className="text-zinc-200">{schema.name}</span>
+            </p>
+            <p className="text-sm text-zinc-400 mt-2">
+              Map your columns to semantic roles. Required roles are marked with *.
+            </p>
+          </div>
+
+          {schema.roles.map((role) => {
+            const mapping = mappings.find((m) => m.roleId === role.id);
+            const selectedColumn = mapping?.sourceColumn || '';
+
+            return (
+              <div key={role.id} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium">
+                    {role.name}
+                    {role.required && <span className="text-red-400 ml-1">*</span>}
+                  </Label>
+                  <Badge variant="secondary" className="text-xs bg-zinc-800">
+                    {role.dataType || 'any'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-zinc-500">{role.description}</p>
+                <div className="flex gap-2">
+                  <Select
+                    value={selectedColumn || '__none__'}
+                    onValueChange={(val) => handleMappingChange(role.id, val === '__none__' ? '' : val)}
+                  >
+                    <SelectTrigger className="flex-1 bg-zinc-800 border-zinc-700">
+                      <SelectValue placeholder="Select column..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                      <SelectItem value="__none__">— None —</SelectItem>
+                      {bundle.source.columns.map((col) => (
+                        <SelectItem key={col} value={col}>
+                          {col}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {mapping && (
+                    <Input
+                      value={mapping.displayName}
+                      onChange={(e) => handleDisplayNameChange(role.id, e.target.value)}
+                      placeholder="Display name"
+                      className="bg-zinc-800 border-zinc-700 w-40"
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+
+      <div className="flex gap-2 pt-4 px-4 border-t border-zinc-800">
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          className="border-zinc-700"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => onComplete(mappings)}
+          disabled={!hasRequiredMappings}
+          className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+          title={!hasRequiredMappings ? 'Please map all required roles' : 'Save mappings'}
+        >
+          {!hasRequiredMappings ? 'Map all required roles first' : 'Save Mappings'}
+        </Button>
+      </div>
     </div>
   );
 }
