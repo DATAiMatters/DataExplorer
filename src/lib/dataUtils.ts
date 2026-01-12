@@ -118,6 +118,101 @@ export function transformToHierarchy(
 // DATA TRANSFORMATION - TABULAR PROFILING
 // ============================================
 
+function calculateQualityScore(
+  values: unknown[],
+  dataType: string,
+  uniqueCount: number,
+  nullCount: number,
+  totalCount: number,
+  numericStats?: { mean: number; stdDev: number }
+): { score: number; issues: import('@/types').QualityIssue[] } {
+  const issues: import('@/types').QualityIssue[] = [];
+  let completenessScore = 0;
+  let consistencyScore = 0;
+  let validityScore = 0;
+
+  // 1. Completeness (40% weight)
+  const completenessRate = (totalCount - nullCount) / totalCount;
+  completenessScore = completenessRate * 40;
+
+  if (completenessRate < 0.8) {
+    issues.push({
+      type: 'high_nulls',
+      severity: completenessRate < 0.5 ? 'error' : 'warning',
+      message: `High null rate: ${((1 - completenessRate) * 100).toFixed(1)}% missing`,
+      count: nullCount,
+    });
+  }
+
+  // 2. Consistency (30% weight)
+  // Check for low cardinality (single value column)
+  if (uniqueCount === 1 && totalCount > 1) {
+    consistencyScore = 0;
+    issues.push({
+      type: 'low_cardinality',
+      severity: 'warning',
+      message: 'All values are identical',
+      count: 1,
+    });
+  } else {
+    consistencyScore = 30; // Default good score
+
+    // For numeric columns, check for outliers
+    if (dataType === 'number' && numericStats) {
+      const nonNullValues = values.filter((v) => v !== null && v !== undefined && v !== '');
+      const nums = nonNullValues.map(Number).filter((n) => !isNaN(n));
+      const outlierThreshold = numericStats.mean + (3 * numericStats.stdDev);
+      const lowerThreshold = numericStats.mean - (3 * numericStats.stdDev);
+      const outliers = nums.filter((n) => n > outlierThreshold || n < lowerThreshold);
+
+      if (outliers.length > 0) {
+        const outlierRate = outliers.length / nums.length;
+        if (outlierRate > 0.05) {
+          consistencyScore -= 15;
+          issues.push({
+            type: 'outliers',
+            severity: 'info',
+            message: `${outliers.length} outliers detected (>3 std dev)`,
+            count: outliers.length,
+          });
+        }
+      }
+    }
+  }
+
+  // 3. Validity (30% weight)
+  validityScore = 30; // Default good score
+
+  // For string columns, check format consistency
+  if (dataType === 'string') {
+    const nonNullValues = values.filter((v) => v !== null && v !== undefined && v !== '');
+    const stringValues = nonNullValues.map(String);
+
+    // Check for mixed casing
+    const hasUpper = stringValues.some((v) => v !== v.toLowerCase());
+    const hasLower = stringValues.some((v) => v !== v.toUpperCase());
+    const hasMixedCase = hasUpper && hasLower;
+
+    if (hasMixedCase && stringValues.length > 10) {
+      const upperCount = stringValues.filter((v) => v === v.toUpperCase()).length;
+      const lowerCount = stringValues.filter((v) => v === v.toLowerCase()).length;
+      const mixedRate = Math.abs(upperCount - lowerCount) / stringValues.length;
+
+      if (mixedRate > 0.3) {
+        validityScore -= 10;
+        issues.push({
+          type: 'format_inconsistency',
+          severity: 'info',
+          message: 'Mixed uppercase/lowercase detected',
+        });
+      }
+    }
+  }
+
+  const totalScore = Math.round(completenessScore + consistencyScore + validityScore);
+  return { score: totalScore, issues };
+}
+
 export function profileTabularData(
   source: DataSource,
   mappings: ColumnMapping[]
@@ -152,10 +247,12 @@ export function profileTabularData(
       nullCount,
       uniqueCount: uniqueValues.size,
       totalCount: values.length,
+      qualityScore: 0,
+      qualityIssues: [],
     };
 
-    // Top values for categorical
-    if (dataType === 'string' && uniqueValues.size <= 100) {
+    // All unique values with counts for all data types (limit to 1000 unique values)
+    if (uniqueValues.size <= 1000) {
       const valueCounts = new Map<string, number>();
       for (const v of nonNullValues) {
         const key = String(v);
@@ -163,7 +260,6 @@ export function profileTabularData(
       }
       profile.topValues = Array.from(valueCounts.entries())
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
         .map(([value, count]) => ({ value, count }));
     }
 
@@ -176,7 +272,7 @@ export function profileTabularData(
         const mean = sum / nums.length;
         const median = nums[Math.floor(nums.length / 2)];
         const variance = nums.reduce((acc, n) => acc + Math.pow(n - mean, 2), 0) / nums.length;
-        
+
         profile.numericStats = {
           min: nums[0],
           max: nums[nums.length - 1],
@@ -187,6 +283,18 @@ export function profileTabularData(
       }
     }
 
+    // Calculate quality score
+    const quality = calculateQualityScore(
+      values,
+      dataType,
+      uniqueValues.size,
+      nullCount,
+      values.length,
+      profile.numericStats
+    );
+    profile.qualityScore = quality.score;
+    profile.qualityIssues = quality.issues;
+
     profiles.push(profile);
   }
 
@@ -196,15 +304,43 @@ export function profileTabularData(
       const values = source.parsedData.map((row) => row[column]);
       const nullCount = values.filter((v) => v === null || v === undefined || v === '').length;
       const nonNullValues = values.filter((v) => v !== null && v !== undefined && v !== '');
-      
-      profiles.push({
+      const uniqueValues = new Set(nonNullValues.map(String));
+
+      const profile: TabularProfile = {
         column,
         displayName: column,
         dataType: 'mixed',
         nullCount,
-        uniqueCount: new Set(nonNullValues.map(String)).size,
+        uniqueCount: uniqueValues.size,
         totalCount: values.length,
-      });
+        qualityScore: 0,
+        qualityIssues: [],
+      };
+
+      // Add unique values with counts for unmapped columns too (limit to 1000)
+      if (uniqueValues.size <= 1000) {
+        const valueCounts = new Map<string, number>();
+        for (const v of nonNullValues) {
+          const key = String(v);
+          valueCounts.set(key, (valueCounts.get(key) || 0) + 1);
+        }
+        profile.topValues = Array.from(valueCounts.entries())
+          .sort((a, b) => b[1] - a[1])
+          .map(([value, count]) => ({ value, count }));
+      }
+
+      // Calculate quality score for unmapped columns
+      const quality = calculateQualityScore(
+        values,
+        'mixed',
+        uniqueValues.size,
+        nullCount,
+        values.length
+      );
+      profile.qualityScore = quality.score;
+      profile.qualityIssues = quality.issues;
+
+      profiles.push(profile);
     }
   }
 
@@ -223,35 +359,58 @@ export function transformToNetwork(
   const targetMapping = mappings.find((m) => m.roleId === 'target_node');
   const weightMapping = mappings.find((m) => m.roleId === 'edge_weight');
   const labelMapping = mappings.find((m) => m.roleId === 'edge_label');
+  const nodeGroupMapping = mappings.find((m) => m.roleId === 'node_group');
+  const relationshipTypeMapping = mappings.find((m) => m.roleId === 'relationship_type');
+  const cardinalityMapping = mappings.find((m) => m.roleId === 'cardinality');
 
   if (!sourceMapping || !targetMapping) {
     throw new Error('Network requires source_node and target_node mappings');
   }
 
-  const nodesSet = new Set<string>();
+  const nodesMap = new Map<string, { id: string; label: string; group?: string }>();
   const edges: NetworkData['edges'] = [];
 
+  // Build nodes with group information
   for (const row of source.parsedData) {
     const sourceId = String(row[sourceMapping.sourceColumn] ?? '');
     const targetId = String(row[targetMapping.sourceColumn] ?? '');
+    const nodeGroup = nodeGroupMapping ? String(row[nodeGroupMapping.sourceColumn] ?? '') : undefined;
 
     if (sourceId && targetId) {
-      nodesSet.add(sourceId);
-      nodesSet.add(targetId);
+      // Add source node with group if not already present
+      if (!nodesMap.has(sourceId)) {
+        nodesMap.set(sourceId, {
+          id: sourceId,
+          label: sourceId,
+          group: nodeGroup,
+        });
+      }
+
+      // Add target node with group if not already present
+      if (!nodesMap.has(targetId)) {
+        nodesMap.set(targetId, {
+          id: targetId,
+          label: targetId,
+          group: nodeGroup,
+        });
+      }
 
       edges.push({
         source: sourceId,
         target: targetId,
         weight: weightMapping ? Number(row[weightMapping.sourceColumn]) || 1 : 1,
         label: labelMapping ? String(row[labelMapping.sourceColumn] ?? '') : undefined,
+        relationshipType: relationshipTypeMapping
+          ? String(row[relationshipTypeMapping.sourceColumn] ?? '')
+          : undefined,
+        cardinality: cardinalityMapping
+          ? String(row[cardinalityMapping.sourceColumn] ?? '')
+          : undefined,
       });
     }
   }
 
-  const nodes: NetworkNode[] = Array.from(nodesSet).map((id) => ({
-    id,
-    label: id,
-  }));
+  const nodes: NetworkNode[] = Array.from(nodesMap.values());
 
   return { nodes, edges };
 }
