@@ -1,0 +1,172 @@
+category,name,inverse_name,description,symmetric,purpose
+Data Lineage,sources from,feeds into,"Data origin - Asset A sources from Asset B means B provides data to A",false,Data provenance tracking
+Data Lineage,transforms into,is transformed from,"Data transformation - Asset A transforms into Asset B through processing",false,Transformation lineage
+Data Lineage,copies to,is copied from,"Data replication - Asset A is replicated to Asset B",false,Replication tracking
+Data Lineage,aggregates,is aggregated into,"Rollup - Asset A combines multiple records into Asset B",false,Aggregation lineage
+Data Lineage,derives from,is source for,"Calculated/derived data - Asset A is computed from Asset B",false,Derived field tracking
+Data Lineage,extracts from,is extracted to,"Extraction - Asset A pulls data from Asset B",false,ETL extraction
+Data Lineage,loads into,is loaded from,"Loading - Asset A loads data into Asset B",false,ETL loading
+Data Lineage,merges with,merges with,"Data merge - Asset A combines with Asset B",true,Data integration
+Data Lineage,splits into,is split from,"Data split - Asset A divides into Asset B",false,Data partitioning
+Data Lineage,filters from,is filtered to,"Filtering - Asset A is a filtered subset of Asset B",false,Subset tracking
+Data Lineage,enriches,is enriched by,"Data enrichment - Asset A adds value to Asset B",false,Data augmentation
+Data Lineage,cleanses,is cleansed by,"Data cleansing - Asset A applies cleaning rules to Asset B",false,Cleansing lineage
+Data Quality,validates,is validated by,"Validation - Asset A validates Asset B against rules",false,Rule validation
+Data Quality,conflicts with,conflicts with,"Data conflict - Asset A has conflicting values with Asset B",true,Conflict detection
+Data Quality,is master for,has master,"Master data - Asset A is the golden record for Asset B",false,Golden record management
+Data Quality,overrides,is overridden by,"Precedence - Asset A takes priority over Asset B",false,Data precedence rules
+Data Quality,matches,matches,"Record matching - Asset A matches Asset B (potential duplicate)",true,Duplicate detection
+Data Quality,is duplicate of,is duplicate of,"Duplicate - Asset A is a duplicate of Asset B",true,Duplicate flagging
+Data Quality,certifies,is certified by,"Certification - Asset A certifies Asset B as quality-approved",false,Data certification
+Data Quality,profiles,is profiled by,"Profiling - Asset A analyzes data patterns in Asset B",false,Data discovery
+Data Quality,monitors,is monitored by,"Monitoring - Asset A tracks quality metrics for Asset B",false,Quality observability
+Data Quality,scores,is scored by,"Quality scoring - Asset A assigns quality score to Asset B",false,Quality measurement
+Data Quality,standardizes,is standardized by,"Standardization - Asset A applies standards to Asset B",false,Data standardization
+Data Quality,is anomaly in,has anomaly,"Anomaly - Asset A is an anomaly detected in Asset B",false,Anomaly detection
+Data Quality,violates,is violated by,"Violation - Asset A violates rule Asset B",false,Exception tracking
+Data Quality,conforms to rule,has conforming data,"Conformance - Asset A conforms to rule Asset B",false,Compliance verification
+Data Quality,remediates,is remediated by,"Remediation - Asset A remediates issue in Asset B",false,Issue resolution
+Data Quality,quarantines,is quarantined by,"Quarantine - Asset A quarantines suspect data Asset B",false,Data isolation
+Data Quality,reconciles with,reconciles with,"Reconciliation - Asset A reconciles with Asset B",true,Cross-system verification
+Data Quality,is authoritative for,has authoritative source,"Authority - Asset A is authoritative source for Asset B",false,System of record
+Data Quality,survives as,is survived by,"Survivorship - Asset A survives merge as Asset B",false,MDM survivorship
+Data Quality,deduplicates to,is deduplicated from,"Deduplication - Asset A deduplicates to Asset B",false,Deduplication results
+Data Quality,normalizes value to,has normalized value from,"Value normalization - Asset A normalizes value to Asset B",false,Value standardization
+Data Quality,parses to,is parsed from,"Parsing - Asset A parses into components Asset B",false,Data parsing
+Data Quality,imputes,is imputed by,"Imputation - Asset A imputes missing values for Asset B",false,Missing data handling
+Data Quality,is outlier in,has outlier,"Outlier - Asset A is statistical outlier in Asset B",false,Outlier detection
+Data Quality,benchmarks against,is benchmarked by,"Benchmark - Asset A benchmarks against Asset B",false,Quality comparison
+Data Quality,measures,is measured by,"Measurement - Asset A measures quality of Asset B",false,Metrics tracking
+Data Quality,sets threshold for,has threshold from,"Threshold - Asset A sets quality threshold for Asset B",false,Threshold management
+Data Quality,triggers alert for,has alert from,"Alert - Asset A triggers alert for Asset B",false,Quality alerting
+Data Governance,is owned by,owns,"Ownership - Asset A is owned by Asset B (person/org)",false,Data ownership
+Data Governance,is stewarded by,stewards,"Stewardship - Asset A is managed by steward Asset B",false,Data stewardship
+Data Governance,is custodian of,has custodian,"Custody - Asset A has technical custody of Asset B",false,Technical responsibility
+Data Governance,governs,is governed by,"Governance - Asset A sets policies for Asset B",false,Policy enforcement
+Data Governance,is accountable for,has accountable party,"RACI Accountable - Asset A is accountable for Asset B",false,RACI accountability
+Data Governance,is responsible for,has responsible party,"RACI Responsible - Asset A is responsible for Asset B",false,RACI responsibility
+Data Governance,is consulted on,consults on,"RACI Consulted - Asset A is consulted regarding Asset B",false,RACI consultation
+Data Governance,is informed of,informs,"RACI Informed - Asset A is informed about Asset B",false,RACI communication
+Data Governance,approves,is approved by,"Approval - Asset A approves Asset B",false,Approval workflows
+Data Governance,reviews,is reviewed by,"Review - Asset A reviews Asset B",false,Review process
+Data Governance,delegates to,is delegated from,"Delegation - Asset A delegates responsibility to Asset B",false,Responsibility delegation
+Compliance & Policy,complies with,is complied with by,"Compliance - Asset A complies with regulation/policy Asset B",false,Regulatory compliance
+Compliance & Policy,is classified as,classifies,"Classification - Asset A is classified as Asset B (e.g., PII)",false,Data classification
+Compliance & Policy,is subject to,applies to,"Policy applicability - Asset A is subject to policy Asset B",false,Policy scope
+Compliance & Policy,is regulated by,regulates,"Regulation - Asset A is regulated by Asset B",false,Regulatory tracking
+Compliance & Policy,is retained per,sets retention for,"Retention - Asset A follows retention policy Asset B",false,Retention management
+Compliance & Policy,requires consent for,has consent requirement,"Consent - Asset A requires consent defined by Asset B",false,Privacy consent
+Compliance & Policy,is restricted by,restricts,"Restriction - Asset A is restricted by policy Asset B",false,Access restrictions
+Compliance & Policy,audits,is audited by,"Audit - Asset A audits Asset B",false,Audit tracking
+Compliance & Policy,evidences,is evidenced by,"Evidence - Asset A provides evidence for Asset B",false,Audit evidence
+Schema & Structure,contains field,is field in,"Structure - Asset A (table) contains Asset B (field)",false,Schema documentation
+Schema & Structure,contains,is contained in,"Containment - Asset A contains Asset B",false,Structural hierarchy
+Schema & Structure,references,is referenced by,"Foreign key - Asset A references Asset B",false,Referential integrity
+Schema & Structure,inherits from,is inherited by,"Inheritance - Asset A inherits properties from Asset B",false,Schema inheritance
+Schema & Structure,implements,is implemented by,"Implementation - Asset A (physical) implements Asset B (logical)",false,Logical-physical mapping
+Schema & Structure,extends,is extended by,"Extension - Asset A extends Asset B with additional properties",false,Schema extension
+Schema & Structure,composes,is composed of,"Composition - Asset A is composed of Asset B",false,Structural composition
+Schema & Structure,is instance of,has instance,"Instance - Asset A is an instance of Asset B (class/type)",false,Type instantiation
+Schema & Structure,is attribute of,has attribute,"Attribute - Asset A is an attribute of Asset B",false,Attribute modeling
+Schema & Structure,has primary key,is primary key of,"Primary key - Asset A has Asset B as primary key",false,Key documentation
+Schema & Structure,has foreign key,is foreign key of,"Foreign key - Asset A has Asset B as foreign key",false,Key documentation
+Mapping & Integration,maps to,is mapped from,"Mapping - Asset A maps to Asset B",false,Field mapping
+Mapping & Integration,aligns with,aligns with,"Alignment - Asset A aligns with Asset B semantically",true,Semantic alignment
+Mapping & Integration,translates to,is translated from,"Translation - Asset A translates to Asset B (format/encoding)",false,Format translation
+Mapping & Integration,converts to,is converted from,"Conversion - Asset A converts to Asset B",false,Data conversion
+Mapping & Integration,normalizes to,is normalized from,"Normalization - Asset A normalizes to Asset B",false,Schema normalization
+Mapping & Integration,denormalizes to,is denormalized from,"Denormalization - Asset A denormalizes to Asset B",false,Performance optimization
+Mapping & Integration,conforms to,is conformed by,"Conformance - Asset A conforms to standard Asset B",false,Standards compliance
+Mapping & Integration,integrates with,integrates with,"Integration - Asset A integrates with Asset B",true,System integration
+Business Process,triggers,is triggered by,"Trigger - Asset A triggers Asset B",false,Event initiation
+Business Process,follows,is followed by,"Sequence - Asset A follows Asset B in a process",false,Process sequencing
+Business Process,precedes,succeeds,"Precedence - Asset A comes before Asset B",false,Process ordering
+Business Process,inputs to,receives input from,"Input - Asset A is input to Asset B",false,Process inputs
+Business Process,outputs to,receives output from,"Output - Asset A outputs to Asset B",false,Process outputs
+Business Process,produces,is produced by,"Production - Asset A produces Asset B",false,Data creation
+Business Process,consumes,is consumed by,"Consumption - Asset A consumes Asset B",false,Data consumption
+Business Process,orchestrates,is orchestrated by,"Orchestration - Asset A orchestrates Asset B",false,Workflow management
+Business Process,executes,is executed by,"Execution - Asset A executes Asset B",false,Process execution
+Business Process,invokes,is invoked by,"Invocation - Asset A invokes Asset B",false,Service invocation
+Business Process,schedules,is scheduled by,"Scheduling - Asset A schedules Asset B",false,Job scheduling
+Business Process,enables,is enabled by,"Enablement - Asset A enables Asset B to function",false,Capability enablement
+Business Process,blocks,is blocked by,"Blocking - Asset A blocks Asset B",false,Dependency blocking
+Dependency & Impact,depends on,is depended on by,"Dependency - Asset A depends on Asset B",false,Dependency tracking
+Dependency & Impact,impacts,is impacted by,"Impact - Changes to Asset A impact Asset B",false,Impact analysis
+Dependency & Impact,requires,is required by,"Requirement - Asset A requires Asset B",false,Requirements tracking
+Dependency & Impact,supports,is supported by,"Support - Asset A supports Asset B",false,Support relationships
+Dependency & Impact,affects,is affected by,"Effect - Asset A affects Asset B",false,Effect tracking
+Dependency & Impact,constrains,is constrained by,"Constraint - Asset A constrains Asset B",false,Constraint management
+Semantic & Ontology,is a type of,has type,"Taxonomy - Asset A is a type/subclass of Asset B",false,Taxonomic classification
+Semantic & Ontology,is a,has subtype,"Subtype - Asset A is a subtype of Asset B (ISA relationship)",false,Ontology hierarchy
+Semantic & Ontology,is related to,is related to,"General relation - Asset A is related to Asset B",true,General association
+Semantic & Ontology,is synonym of,is synonym of,"Synonym - Asset A is synonymous with Asset B",true,Terminology management
+Semantic & Ontology,is like,is like,"Similarity - Asset A is similar to Asset B",true,Similarity detection
+Semantic & Ontology,has a,is a part of,"Part-whole - Asset A has Asset B as a part",false,Mereology
+Semantic & Ontology,is equivalent to,is equivalent to,"Equivalence - Asset A is semantically equivalent to Asset B",true,Semantic matching
+Semantic & Ontology,is broader than,is narrower than,"Broader/narrower - Asset A is broader concept than Asset B",false,Concept hierarchy
+Semantic & Ontology,is same as,is same as,"Identity - Asset A is the same entity as Asset B",true,Entity resolution
+Semantic & Ontology,see also,see also,"Related - Asset A has related concept Asset B",true,Cross-reference
+Semantic & Ontology,replaces,is replaced by,"Replacement - Asset A replaces deprecated Asset B",false,Deprecation management
+Semantic & Ontology,deprecates,is deprecated by,"Deprecation - Asset A deprecates Asset B",false,Lifecycle management
+Versioning & Lifecycle,is version of,has version,"Versioning - Asset A is a version of Asset B",false,Version tracking
+Versioning & Lifecycle,succeeds,is succeeded by,"Succession - Asset A succeeds Asset B (newer version)",false,Version succession
+Versioning & Lifecycle,is derived version of,has derived version,"Derived version - Asset A is derived from Asset B",false,Branch tracking
+Versioning & Lifecycle,archives,is archived by,"Archival - Asset A archives Asset B",false,Archival management
+Versioning & Lifecycle,retires,is retired by,"Retirement - Asset A retires Asset B",false,Retirement tracking
+Versioning & Lifecycle,migrates to,is migrated from,"Migration - Asset A migrates to Asset B",false,Migration tracking
+Versioning & Lifecycle,snapshots,is snapshot of,"Snapshot - Asset A is a point-in-time snapshot of Asset B",false,Point-in-time capture
+Data Migration,is source system for,has source system,"Source system - Asset A is source system for migration Asset B",false,Migration source planning
+Data Migration,is target system for,has target system,"Target system - Asset A is target system for migration Asset B",false,Migration target planning
+Data Migration,maps legacy to,is legacy mapping for,"Legacy mapping - Asset A maps legacy Asset B to new system",false,Legacy field mapping
+Data Migration,converts from legacy,is legacy for,"Legacy conversion - Asset A converts from legacy Asset B",false,Legacy modernization
+Data Migration,is cutover for,has cutover,"Cutover - Asset A is cutover plan for Asset B",false,Cutover planning
+Data Migration,validates migration of,has migration validation,"Migration validation - Asset A validates migration of Asset B",false,Migration testing
+Data Migration,reconciles migration of,has migration reconciliation,"Migration reconciliation - Asset A reconciles migrated Asset B",false,Migration verification
+Data Migration,is fallback for,has fallback,"Fallback - Asset A is fallback for migration Asset B",false,Rollback planning
+Data Migration,stages,is staged by,"Staging - Asset A stages Asset B for migration",false,Staging management
+Data Migration,is wave in,has wave,"Wave - Asset A is in migration wave Asset B",false,Phased migration
+Data Migration,is in scope of,defines scope for,"Scope - Asset A is in scope of migration Asset B",false,Scope management
+Data Migration,is out of scope of,excludes from scope,"Out of scope - Asset A is out of scope for migration Asset B",false,Scope exclusion
+Data Migration,is prerequisite for migration of,has migration prerequisite,"Prerequisite - Asset A is prerequisite for migrating Asset B",false,Migration dependencies
+Data Migration,blocks migration of,has migration blocked by,"Blocker - Asset A blocks migration of Asset B",false,Blocker tracking
+Data Migration,parallelizes with,parallelizes with,"Parallel run - Asset A runs in parallel with Asset B during migration",true,Parallel testing
+Data Migration,sunsets,is sunset by,"Sunset - Asset A sunsets Asset B post-migration",false,Sunset planning
+Data Migration,decommissions,is decommissioned by,"Decommission - Asset A decommissions Asset B",false,Decommissioning
+Data Migration,coexists with,coexists with,"Coexistence - Asset A coexists with Asset B during migration",true,Hybrid state management
+Data Migration,synchronizes with,synchronizes with,"Sync - Asset A synchronizes with Asset B during migration",true,Migration sync
+Data Migration,is dry run for,has dry run,"Dry run - Asset A is dry run for migration Asset B",false,Migration rehearsal
+Data Migration,is pilot for,has pilot,"Pilot - Asset A is pilot migration for Asset B",false,Pilot validation
+Data Migration,extracts for migration,is extracted for migration by,"Migration extract - Asset A extracts Asset B for migration",false,Migration ETL
+Data Migration,transforms for migration,is transformed for migration by,"Migration transform - Asset A transforms Asset B for migration",false,Migration transformation
+Data Migration,loads for migration,is loaded for migration by,"Migration load - Asset A loads Asset B into target",false,Migration loading
+Data Migration,cleanses for migration,is cleansed for migration by,"Migration cleanse - Asset A cleanses Asset B pre-migration",false,Pre-migration DQ
+Data Migration,is rollback plan for,has rollback plan,"Rollback - Asset A is rollback plan for migration Asset B",false,Rollback planning
+Data Migration,tests migration of,has migration test,"Migration test - Asset A tests migration of Asset B",false,Migration testing
+Data Migration,accepts migration of,has migration acceptance,"Acceptance - Asset A accepts migrated Asset B",false,UAT acceptance
+Access & Security,has access to,is accessible by,"Access - Asset A has access to Asset B",false,Access control
+Access & Security,is protected by,protects,"Protection - Asset A is protected by Asset B (policy/control)",false,Security controls
+Access & Security,encrypts,is encrypted by,"Encryption - Asset A encrypts Asset B",false,Encryption management
+Access & Security,masks,is masked by,"Masking - Asset A masks Asset B",false,Data masking
+Access & Security,tokenizes,is tokenized by,"Tokenization - Asset A tokenizes Asset B",false,Tokenization
+Access & Security,grants access to,receives access from,"Grant - Asset A grants access to Asset B",false,Permission management
+Access & Security,inherits permissions from,grants permissions to,"Permission inheritance - Asset A inherits permissions from B",false,RBAC inheritance
+Physical & Infrastructure,is hosted on,hosts,"Hosting - Asset A is hosted on Asset B",false,Infrastructure mapping
+Physical & Infrastructure,runs on,runs,"Runtime - Asset A runs on Asset B",false,Runtime tracking
+Physical & Infrastructure,is stored in,stores,"Storage - Asset A is stored in Asset B",false,Storage mapping
+Physical & Infrastructure,connects to,connects to,"Connection - Asset A connects to Asset B",true,Connectivity mapping
+Physical & Infrastructure,is deployed to,has deployment,"Deployment - Asset A is deployed to Asset B",false,Deployment tracking
+Physical & Infrastructure,is backed up to,backs up,"Backup - Asset A is backed up to Asset B",false,Backup tracking
+Documentation & Knowledge,documents,is documented by,"Documentation - Asset A documents Asset B",false,Documentation linking
+Documentation & Knowledge,defines,is defined by,"Definition - Asset A defines Asset B",false,Definition management
+Documentation & Knowledge,describes,is described by,"Description - Asset A describes Asset B",false,Metadata enrichment
+Documentation & Knowledge,annotates,is annotated by,"Annotation - Asset A annotates Asset B",false,Annotation tracking
+Documentation & Knowledge,tags,is tagged by,"Tagging - Asset A tags Asset B",false,Tag management
+Documentation & Knowledge,links to,is linked from,"Link - Asset A links to Asset B",false,Cross-referencing
+Collaboration,is assigned to,has assignee,"Assignment - Asset A is assigned to Asset B",false,Task assignment
+Collaboration,is created by,creates,"Creation - Asset A is created by Asset B",false,Authorship tracking
+Collaboration,is modified by,modifies,"Modification - Asset A is modified by Asset B",false,Change tracking
+Collaboration,subscribes to,has subscriber,"Subscription - Asset A subscribes to Asset B",false,Notification management
+Collaboration,shares with,receives share from,"Sharing - Asset A shares with Asset B",false,Sharing management
+Collaboration,comments on,has comment,"Comment - Asset A comments on Asset B",false,Discussion tracking
+Collaboration,mentions,is mentioned by,"Mention - Asset A mentions Asset B",false,Reference tracking
