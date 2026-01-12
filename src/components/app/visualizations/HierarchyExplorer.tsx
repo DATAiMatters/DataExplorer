@@ -5,7 +5,8 @@ import { transformToHierarchy, findNodeById, flattenHierarchy } from '@/lib/data
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ChevronRight, Home, Maximize, LayoutGrid, GitBranch, ZoomIn, ZoomOut, RotateCcw, ArrowRight, ArrowDown } from 'lucide-react';
+import { ChevronRight, Home, Maximize, LayoutGrid, GitBranch, ZoomIn, ZoomOut, RotateCcw, ArrowRight, ArrowDown, Eye } from 'lucide-react';
+import { DataGridView } from './DataGridView';
 import type { DataBundle, SemanticSchema, HierarchyNode } from '@/types';
 
 interface Props {
@@ -24,6 +25,7 @@ export function HierarchyExplorer({ bundle }: Props) {
   const resetBreadcrumb = useAppStore((s) => s.resetBreadcrumb);
 
   const [hoveredNode, setHoveredNode] = useState<HierarchyNode | null>(null);
+  const [viewMode, setViewMode] = useState<'viz' | 'grid'>('viz');
   const [viewType, setViewType] = useState<ViewType>('treemap');
   const [treeOrientation, setTreeOrientation] = useState<TreeOrientation>('horizontal');
 
@@ -92,6 +94,12 @@ export function HierarchyExplorer({ bundle }: Props) {
     );
   }
 
+  // Show grid view
+  if (viewMode === 'grid') {
+    return <DataGridView bundle={bundle} onBackToProfile={() => setViewMode('viz')} />;
+  }
+
+  // Show visualization view
   return (
     <div className="h-full flex flex-col">
       {/* Toolbar */}
@@ -137,6 +145,16 @@ export function HierarchyExplorer({ bundle }: Props) {
 
         {/* View Toggle & Stats */}
         <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setViewMode('grid')}
+            className="h-8 gap-1.5 border-zinc-700 hover:bg-zinc-800"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            View Data
+          </Button>
+
           <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)}>
             <ToggleGroupItem value="treemap" aria-label="Treemap view" className="h-8 px-3 data-[state=on]:bg-zinc-700">
               <LayoutGrid className="w-4 h-4 mr-1" />
@@ -158,7 +176,7 @@ export function HierarchyExplorer({ bundle }: Props) {
               </ToggleGroupItem>
             </ToggleGroup>
           )}
-          
+
           <Badge variant="secondary" className="bg-zinc-800 text-zinc-400">
             {stats.currentViewNodes} nodes in view
           </Badge>
