@@ -4,6 +4,7 @@ import { Database, Layers, Compass, Download, Upload, GitBranch, Sparkles } from
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { VERSION, BUILD_DATE } from '@/version';
 import type { ViewMode } from '@/types';
 
 const navItems: { mode: ViewMode; icon: typeof Database; label: string }[] = [
@@ -60,9 +61,27 @@ export function Sidebar() {
   return (
     <TooltipProvider delayDuration={0}>
       <aside className="w-16 bg-zinc-900 border-r border-zinc-800 flex flex-col items-center py-4 gap-2">
-        {/* Logo */}
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center mb-4">
-          <span className="text-lg font-bold text-white">DE</span>
+        {/* Logo - Data Visualization Icon */}
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center mb-4 relative overflow-hidden">
+          {/* Tree/hierarchy visualization icon */}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="relative z-10">
+            {/* Root node */}
+            <circle cx="12" cy="4" r="2" fill="white" opacity="0.9" />
+            {/* Connecting lines */}
+            <path d="M12 6 L12 10" stroke="white" strokeWidth="1.5" opacity="0.6" />
+            <path d="M12 10 L7 14" stroke="white" strokeWidth="1.5" opacity="0.6" />
+            <path d="M12 10 L17 14" stroke="white" strokeWidth="1.5" opacity="0.6" />
+            {/* Child nodes */}
+            <circle cx="7" cy="15" r="1.5" fill="white" opacity="0.8" />
+            <circle cx="17" cy="15" r="1.5" fill="white" opacity="0.8" />
+            {/* Grandchild nodes */}
+            <path d="M7 16.5 L5 19" stroke="white" strokeWidth="1.5" opacity="0.5" />
+            <path d="M7 16.5 L9 19" stroke="white" strokeWidth="1.5" opacity="0.5" />
+            <circle cx="5" cy="20" r="1.2" fill="white" opacity="0.7" />
+            <circle cx="9" cy="20" r="1.2" fill="white" opacity="0.7" />
+          </svg>
+          {/* Subtle glow effect */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
         </div>
 
         <Separator className="w-8 bg-zinc-800" />
@@ -131,6 +150,23 @@ export function Sidebar() {
             </TooltipContent>
           </Tooltip>
         </div>
+
+        {/* Version Badge */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="mt-2 px-2 py-1 text-xs text-zinc-600 hover:text-zinc-400 cursor-default transition-colors">
+              v{VERSION}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            <div className="text-xs space-y-1">
+              <div className="font-semibold">Data Explorer v{VERSION}</div>
+              <div className="text-zinc-400">
+                Built: {new Date(BUILD_DATE).toUTCString()}
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
       </aside>
     </TooltipProvider>
   );
