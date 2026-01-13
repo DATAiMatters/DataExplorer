@@ -86,21 +86,43 @@ AI Integration feature allows users to connect their own LLM (local or cloud) to
 6. System validates column names exist and applies mappings
 7. User can review/adjust suggestions before creating bundle
 
-### 🚧 Phase 4: Additional Features (PENDING)
+### ✅ Phase 4: Additional Features (COMPLETE)
 
 #### Describe Data (Explorer)
 **Target:** `src/components/app/Explorer.tsx`
-- Button in header toolbar
-- Calls `describeDataPrompt()`
-- Shows description in dialog or toast
-- Position: Next to "View Data" button
+
+**Implementation Complete:**
+- ✅ Button added in header toolbar after "Reload Data"
+- ✅ Calls `describeDataPrompt()` with columns, sample data, and row count
+- ✅ Shows description in Dialog with Alert component
+- ✅ Loading state with spinner animation
+- ✅ Only visible when `aiSettings.enabled === true`
+- ✅ Purple accent styling matching AI theme
+
+**How It Works:**
+1. User clicks "Describe Data" button (Sparkles icon)
+2. System sends first 10 rows + column list + total count to LLM
+3. LLM generates 2-3 sentence business-friendly description
+4. Description appears in modal dialog
+5. User can close and re-open anytime
 
 #### Explain Column (Tabular Explorer)
 **Target:** `src/components/app/visualizations/TabularExplorer.tsx`
-- Button on each column profile card
-- Calls `explainColumnPrompt()`
-- Shows explanation in expanded view
-- Icon: HelpCircle (?)
+
+**Implementation Complete:**
+- ✅ Button added to each ProfileCard at bottom
+- ✅ Calls `explainColumnPrompt()` with statistics and sample values
+- ✅ Shows explanation in Dialog with Alert component
+- ✅ Loading state with "Thinking..." text
+- ✅ Only visible when `aiSettings.enabled === true`
+- ✅ HelpCircle icon with purple accent
+
+**How It Works:**
+1. User clicks "Explain Column" on a profile card
+2. System sends column name, first 20 values, stats (nulls, unique, total) to LLM
+3. LLM analyzes and explains what the column represents
+4. Explanation appears in modal dialog
+5. Works for any data type (string, number, date, boolean, mixed)
 
 ## API Providers Supported
 
@@ -169,8 +191,11 @@ AI Integration feature allows users to connect their own LLM (local or cloud) to
 - [x] Error handling shows Alert notifications
 - [x] Loading states work correctly
 - [x] AI button only shows when enabled
-- [ ] Describe data shows in dialog
-- [ ] Explain column shows in expanded view
+- [x] Describe data button in Explorer header
+- [x] Describe data shows in dialog
+- [x] Explain column button on ProfileCards
+- [x] Explain column shows in dialog
+- [x] All AI features use purple accent theme
 - [ ] Graceful fallback when AI unavailable
 
 ## Usage Examples
@@ -326,6 +351,13 @@ pnpm bundle
   - Success/error feedback with Alerts
   - Bundle size: 774 KB (single file)
 
+- **v0.3.0** (2026-01-12) - Phase 4 complete (ALL PHASES DONE)
+  - Describe Data feature in Explorer
+  - Explain Column feature in TabularExplorer
+  - Both features use Dialog + Alert components
+  - Consistent purple AI theme across all features
+  - Bundle size: 778 KB (single file)
+
 ---
 
-**Status:** Phases 1-3 complete. Ready for Phase 4 (Describe Data, Explain Column features).
+**Status:** ✅ ALL PHASES COMPLETE - Full AI Integration feature implemented and ready for use.

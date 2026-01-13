@@ -1,19 +1,24 @@
 import { useMemo, useState } from 'react';
+import { useAppStore } from '@/store';
 import { profileTabularData } from '@/lib/dataUtils';
+import { callLLM } from '@/lib/aiService';
+import { explainColumnPrompt } from '@/lib/aiPrompts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from '@/components/ui/dialog';
-import { BarChart3, Hash, Type, Calendar, ToggleLeft, AlertCircle, Search, Eye, ShieldCheck, ChevronDown, ChevronRight } from 'lucide-react';
+import { BarChart3, Hash, Type, Calendar, ToggleLeft, AlertCircle, Search, Eye, ShieldCheck, ChevronDown, ChevronRight, HelpCircle, Sparkles, Loader2 } from 'lucide-react';
 import { DataGridView } from './DataGridView';
 import type { DataBundle, SemanticSchema, TabularProfile } from '@/types';
 
@@ -155,7 +160,7 @@ export function TabularExplorer({ bundle }: Props) {
       <ScrollArea className="flex-1 p-6">
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {filteredProfiles.map((profile) => (
-            <ProfileCard key={profile.column} profile={profile} totalRows={summary.totalRows} />
+            <ProfileCard key={profile.column} profile={profile} totalRows={summary.totalRows} bundle={bundle} />
           ))}
         </div>
         {filteredProfiles.length === 0 && (
@@ -166,8 +171,13 @@ export function TabularExplorer({ bundle }: Props) {
   );
 }
 
-function ProfileCard({ profile, totalRows }: { profile: TabularProfile; totalRows: number }) {
+function ProfileCard({ profile, totalRows, bundle }: { profile: TabularProfile; totalRows: number; bundle: DataBundle }) {
+  const aiSettings = useAppStore((s) => s.aiSettings);
   const [showIssues, setShowIssues] = useState(false);
+  const [isExplaining, setIsExplaining] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [explanation, setExplanation] = useState('');
+
   const Icon = typeIcons[profile.dataType];
   const colorClass = typeColors[profile.dataType];
   const completeness = Math.round(((totalRows - profile.nullCount) / totalRows) * 100);
@@ -175,6 +185,40 @@ function ProfileCard({ profile, totalRows }: { profile: TabularProfile; totalRow
 
   const qualityColor = profile.qualityScore >= 80 ? 'text-emerald-400' : profile.qualityScore >= 60 ? 'text-amber-400' : 'text-red-400';
   const qualityBgColor = profile.qualityScore >= 80 ? 'bg-emerald-500/10 border-emerald-500/20' : profile.qualityScore >= 60 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-red-500/10 border-red-500/20';
+
+  const handleExplainColumn = async () => {
+    setIsExplaining(true);
+
+    try {
+      const sampleValues = bundle.source.parsedData
+        .slice(0, 20)
+        .map((row) => row[profile.column])
+        .filter((v) => v != null);
+
+      const prompt = explainColumnPrompt(
+        profile.displayName,
+        sampleValues,
+        profile.nullCount,
+        profile.uniqueCount,
+        profile.totalCount
+      );
+
+      const response = await callLLM(prompt, aiSettings);
+
+      if (response.success) {
+        setExplanation(response.content);
+        setShowExplanation(true);
+      } else {
+        setExplanation(`Error: ${response.error || 'Failed to generate explanation'}`);
+        setShowExplanation(true);
+      }
+    } catch (err) {
+      setExplanation(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setShowExplanation(true);
+    } finally {
+      setIsExplaining(false);
+    }
+  };
 
   return (
     <Card className="bg-zinc-900 border-zinc-800">
@@ -324,6 +368,50 @@ function ProfileCard({ profile, totalRows }: { profile: TabularProfile; totalRow
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {aiSettings.enabled && (
+          <div className="pt-2 border-t border-zinc-800">
+            <Dialog open={showExplanation} onOpenChange={setShowExplanation}>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full border-purple-500/30 hover:bg-purple-500/10"
+                  onClick={handleExplainColumn}
+                  disabled={isExplaining}
+                >
+                  {isExplaining ? (
+                    <>
+                      <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                      Thinking...
+                    </>
+                  ) : (
+                    <>
+                      <HelpCircle className="w-3 h-3 mr-2 text-purple-400" />
+                      Explain Column
+                    </>
+                  )}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-400" />
+                    Column Explanation
+                  </DialogTitle>
+                  <DialogDescription>
+                    AI analysis of {profile.displayName}
+                  </DialogDescription>
+                </DialogHeader>
+                <Alert className="bg-zinc-800/50 border-zinc-700">
+                  <AlertDescription className="text-zinc-200 whitespace-pre-wrap">
+                    {explanation || 'Generating explanation...'}
+                  </AlertDescription>
+                </Alert>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </CardContent>

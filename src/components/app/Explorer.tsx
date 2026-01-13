@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useAppStore } from '@/store';
 import { parseFile } from '@/lib/dataUtils';
+import { callLLM } from '@/lib/aiService';
+import { describeDataPrompt } from '@/lib/aiPrompts';
 import { HierarchyExplorer } from './visualizations/HierarchyExplorer';
 import { TabularExplorer } from './visualizations/TabularExplorer';
 import { NetworkExplorer } from './visualizations/NetworkExplorer';
@@ -12,17 +14,22 @@ import { GeographicExplorer } from './visualizations/GeographicExplorer';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Compass, RefreshCw, Upload, Plus } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, Compass, RefreshCw, Upload, Plus, Sparkles, Loader2, FileText } from 'lucide-react';
 
 export function Explorer() {
   const bundles = useAppStore((s) => s.bundles);
   const schemas = useAppStore((s) => s.schemas);
+  const aiSettings = useAppStore((s) => s.aiSettings);
   const selectedBundleId = useAppStore((s) => s.explorerState.selectedBundleId);
   const setSelectedBundle = useAppStore((s) => s.setSelectedBundle);
   const setViewMode = useAppStore((s) => s.setViewMode);
   const updateBundle = useAppStore((s) => s.updateBundle);
 
   const [isReloading, setIsReloading] = useState(false);
+  const [isDescribing, setIsDescribing] = useState(false);
+  const [showDescription, setShowDescription] = useState(false);
+  const [description, setDescription] = useState('');
 
   const selectedBundle = bundles.find((b) => b.id === selectedBundleId);
   const selectedSchema = selectedBundle
@@ -37,10 +44,10 @@ export function Explorer() {
       const rawData = ev.target?.result as string;
       try {
         const { data, columns } = parseFile(file.name, rawData);
-        
+
         // Update the bundle with new data, keeping existing mappings that still apply
         const validMappings = selectedBundle.mappings.filter(m => columns.includes(m.sourceColumn));
-        
+
         updateBundle(selectedBundle.id, {
           source: {
             type: file.name.endsWith('.json') ? 'json' : 'csv',
@@ -51,7 +58,7 @@ export function Explorer() {
           },
           mappings: validMappings,
         });
-        
+
         setIsReloading(false);
       } catch (err) {
         console.error('Failed to parse file:', err);
@@ -59,6 +66,36 @@ export function Explorer() {
     };
     reader.readAsText(file);
   }, [selectedBundle, updateBundle]);
+
+  const handleDescribeData = async () => {
+    if (!selectedBundle) return;
+
+    setIsDescribing(true);
+
+    try {
+      const sampleData = selectedBundle.source.parsedData.slice(0, 10);
+      const prompt = describeDataPrompt(
+        selectedBundle.source.columns,
+        sampleData,
+        selectedBundle.source.parsedData.length
+      );
+
+      const response = await callLLM(prompt, aiSettings);
+
+      if (response.success) {
+        setDescription(response.content);
+        setShowDescription(true);
+      } else {
+        setDescription(`Error: ${response.error || 'Failed to generate description'}`);
+        setShowDescription(true);
+      }
+    } catch (err) {
+      setDescription(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setShowDescription(true);
+    } finally {
+      setIsDescribing(false);
+    }
+  };
 
   // No bundle selected - show selection prompt
   if (!selectedBundle) {
@@ -141,12 +178,54 @@ export function Explorer() {
                 Upload a new file to replace the data. Column mappings will be preserved where possible.
               </DialogDescription>
             </DialogHeader>
-            <ExplorerReloadUploader 
+            <ExplorerReloadUploader
               onFileSelect={handleReloadFile}
               currentFileName={selectedBundle.source.fileName}
             />
           </DialogContent>
         </Dialog>
+
+        {aiSettings.enabled && (
+          <Dialog open={showDescription} onOpenChange={setShowDescription}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-purple-500/30 hover:bg-purple-500/10"
+                onClick={handleDescribeData}
+                disabled={isDescribing}
+              >
+                {isDescribing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Thinking...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2 text-purple-400" />
+                    Describe Data
+                  </>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-purple-400" />
+                  Data Description
+                </DialogTitle>
+                <DialogDescription>
+                  AI-generated description of {selectedBundle.name}
+                </DialogDescription>
+              </DialogHeader>
+              <Alert className="bg-zinc-800/50 border-zinc-700">
+                <AlertDescription className="text-zinc-200 whitespace-pre-wrap">
+                  {description || 'Generating description...'}
+                </AlertDescription>
+              </Alert>
+            </DialogContent>
+          </Dialog>
+        )}
 
         <Select value={selectedBundleId!} onValueChange={setSelectedBundle}>
           <SelectTrigger className="w-48 bg-zinc-800 border-zinc-700">
