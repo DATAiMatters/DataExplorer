@@ -62,7 +62,7 @@ export function DevGuide() {
               <p className="text-sm text-zinc-400">
                 Technical deep-dive by{' '}
                 <a
-                  href="https://linkedin.com/in/pedrocardoso"
+                  href="https://linkedin.com/in/thedataninja"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-violet-400 hover:text-violet-300 underline"
@@ -121,8 +121,8 @@ export function DevGuide() {
               <div className="mt-6 p-4 bg-violet-500/10 border border-violet-500/20 rounded-lg">
                 <p className="text-xs text-violet-300 leading-relaxed">
                   <strong className="block mb-1">Want to contribute?</strong>
-                  This is open source! Fork the repo, add features, fix bugs, improve docs. Pull
-                  requests welcome.
+                  This is (soon to be) open source! Fork the repo, add features, fix bugs, improve docs. Pull
+                  requests welcome. Stay tuned...just a teaser for now.
                   <br />
                   <a
                     href="https://github.com/DATAiMatters/DataExplorer"

@@ -14,19 +14,30 @@ export interface DevSection {
 export const devGuide: DevSection[] = [
   {
     title: '🎯 Philosophy: Semantic Schemas Over Hard-Coding',
-    content: `Hey techies! 👋
+    content: `Hey Data Ninja's! 👋
 
-I'm Pedro Cardoso, and I built Data Explorer with one core principle: **semantic flexibility**.
+I'm Pedro, and I built Data Explorer to reimagine what data analysis without friction might look like, with a journey through a visually semantic, ontology minded, graph inspired set of lenses.
 
-Instead of hard-coding "name" or "id" columns, we use **semantic roles**. This means the same visualization code works for equipment hierarchies, org charts, file systems, or any tree structure.
+This may also form the basis of my Vibing Data Visualization journey series...once I am convinced I have something worth talking through.
 
-**Why This Matters:**
-- Users map their column names to semantic roles (node_id, parent_id, etc.)
-- Visualizations work with roles, not specific column names
-- Same code handles FLOC data, SAP tables, or custom datasets
-- No code changes needed for different domains
+For my colleagues at Syniti, I've got some SKP API and graphing POC's that I will soon layer in to get the popcorn popping.  In addition to my own accelerated learning in the first 45 days of 2026, I hope to bring others up along the way, whether Data Engineers, Data Migration Consultants, or anyone interested. I also expect feedback, and to do some silly things, maybe even some dumb ones. I hope I make lots of mistakes because that's how I learn best - hitting the walls at the speed of AI boosted innovation!
 
-Think of it as **dependency inversion** for data visualization.`,
+This started as a functional location visualization challenge and opportunity at one of our customers, and it led me to think about the concept of Data Products as Data Bundles of content. So on last week I quickly prototyped a utility that runs 100% in a client's browser, that could load up a hierarchy file (any file) and allow the user to dynamically map the schema and start analyzing a complex structure. I'm coding purposely within the limits of a browser now, for more than data security, but to think BIG and DO it KISS simple - that restriction is opening my mind and pushing me into some exciting areas, but I need more inputs from others, and know that I won't gatekeep my knowledge. If I am doing something wrong, great, let's learn to do it better or less wrong!
+
+~16 hours in of time spent, I have more than 10 schema's available, able to be user extended, including adding relationships, with basic data profiling support, stubs of data quality checks, able to summarize and chop up data bundles into smaller data bites for analysis, and after listening to a podcast and reading some medium posts, on Monday night, in the last hour, I added an interoperability layer for local and remote LLM integration.
+
+Some ideas from Thursday - pasted from my notes, needs to be revised:
+
+Instead of hard-coding "name" or "id" columns, I am thinking about **semantic roles**. 
+This means the same visualization code works for equipment hierarchies, org charts, file systems, or any tree structure.
+
+Why should you care? Well...glad you asked:  
+- Users map their column names to semantic roles (node_id, parent_id, etc.) - whatever they are
+- Visualizations work with roles, not specific column names - data types with PURPOSE
+- Same code handles FLOC data, SAP tables, or custom datasets - means the user's imagination is the limit!
+- No code changes needed for different domains - not quite there yet, but it is stabalizing
+
+Think of it as Dependency Inversion for Data Visualization. Kind of like the Inverted Roof-Water Wicking System, also called the main outdoor Patio on my condo. Except that Inversion failed, and I had 500L of water to deal with, but only 50+L of it got in....yeah..it did.`,
   },
 
   {
@@ -352,7 +363,7 @@ Using shadcn/ui for consistency, but customized for dark theme. All components i
 - Update help content in \`src/config/helpContent.ts\`
 
 **Questions?**
-Find me on LinkedIn: @pedrocardoso (the data ninja)
+Find me on LinkedIn: @pedrocardoso (The Data Ninja)
 Or check the repo: github.com/DATAiMatters/DataExplorer`,
   },
 
