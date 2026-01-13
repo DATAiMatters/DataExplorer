@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useAppStore } from '@/store';
 import { parseFile, generateId } from '@/lib/dataUtils';
+import { callLLM } from '@/lib/aiService';
+import { suggestMappingsPrompt } from '@/lib/aiPrompts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp, Sparkles, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { DataBundle, ColumnMapping, DataSource, SemanticSchema } from '@/types';
 
 const dataTypeIcons = {
@@ -261,11 +264,14 @@ interface BundleCreatorProps {
 }
 
 function BundleCreator({ schemas, onComplete, onCancel }: BundleCreatorProps) {
+  const aiSettings = useAppStore((s) => s.aiSettings);
   const [step, setStep] = useState<'upload' | 'configure' | 'map'>('upload');
   const [name, setName] = useState('');
   const [schemaId, setSchemaId] = useState('');
   const [source, setSource] = useState<DataSource | null>(null);
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiResult, setAiResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const selectedSchema = schemas.find((s) => s.id === schemaId);
 
@@ -340,6 +346,67 @@ function BundleCreator({ schemas, onComplete, onCancel }: BundleCreatorProps) {
     setMappings((prev) =>
       prev.map((m) => (m.roleId === roleId ? { ...m, displayName } : m))
     );
+  };
+
+  const handleAISuggestMappings = async () => {
+    if (!source || !selectedSchema) return;
+
+    setAiSuggesting(true);
+    setAiResult(null);
+
+    try {
+      // Get sample data (first 10 rows)
+      const sampleData = source.parsedData.slice(0, 10);
+
+      // Generate prompt
+      const prompt = suggestMappingsPrompt(source.columns, sampleData, selectedSchema);
+
+      // Call LLM
+      const response = await callLLM(prompt, aiSettings);
+
+      if (response.success) {
+        try {
+          // Parse JSON response
+          const suggestedMappings = JSON.parse(response.content);
+
+          // Convert to ColumnMapping format
+          const newMappings: ColumnMapping[] = [];
+          for (const [roleId, columnName] of Object.entries(suggestedMappings)) {
+            if (typeof columnName === 'string' && source.columns.includes(columnName)) {
+              newMappings.push({
+                sourceColumn: columnName,
+                roleId,
+                displayName: columnName,
+              });
+            }
+          }
+
+          // Apply mappings
+          setMappings(newMappings);
+          setAiResult({
+            success: true,
+            message: `Applied ${newMappings.length} suggested mappings`,
+          });
+        } catch (parseErr) {
+          setAiResult({
+            success: false,
+            message: 'Failed to parse AI response. Try again or map manually.',
+          });
+        }
+      } else {
+        setAiResult({
+          success: false,
+          message: response.error || 'AI suggestion failed',
+        });
+      }
+    } catch (err) {
+      setAiResult({
+        success: false,
+        message: err instanceof Error ? err.message : 'Unknown error',
+      });
+    } finally {
+      setAiSuggesting(false);
+    }
   };
 
   const handleCreate = () => {
@@ -450,6 +517,52 @@ function BundleCreator({ schemas, onComplete, onCancel }: BundleCreatorProps) {
           <div className="text-sm text-zinc-400 mb-4">
             Map your columns to semantic roles. Required roles are marked with *.
           </div>
+
+          {/* AI Suggest Mappings Button */}
+          {aiSettings.enabled && (
+            <div className="space-y-2">
+              <Button
+                onClick={handleAISuggestMappings}
+                disabled={aiSuggesting}
+                variant="outline"
+                className="w-full border-purple-500/30 hover:bg-purple-500/10"
+              >
+                {aiSuggesting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Thinking...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2 text-purple-400" />
+                    Suggest Mappings with AI
+                  </>
+                )}
+              </Button>
+
+              {/* AI Result Alert */}
+              {aiResult && (
+                <Alert
+                  className={
+                    aiResult.success
+                      ? 'bg-emerald-500/10 border-emerald-500/20'
+                      : 'bg-red-500/10 border-red-500/20'
+                  }
+                >
+                  {aiResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-red-400" />
+                  )}
+                  <AlertDescription
+                    className={aiResult.success ? 'text-emerald-200 text-sm' : 'text-red-200 text-sm'}
+                  >
+                    {aiResult.message}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
 
           <ScrollArea className="h-[300px] pr-4">
             <div className="space-y-4">
