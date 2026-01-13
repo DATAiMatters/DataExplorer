@@ -280,6 +280,18 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'data-explorer-storage',
+      version: 1,
+      migrate: (persistedState) => {
+        if (!persistedState) return persistedState;
+        const state = persistedState as Partial<AppStore>;
+        const storedSchemas = Array.isArray(state.schemas) ? state.schemas : [];
+        const storedById = new Map(storedSchemas.map((schema) => [schema.id, schema]));
+        const mergedSchemas = [
+          ...defaultSchemas.map((schema) => storedById.get(schema.id) ?? schema),
+          ...storedSchemas.filter((schema) => !schema.id.endsWith('-default')),
+        ];
+        return { ...state, schemas: mergedSchemas };
+      },
       partialize: (state) => {
         // Don't truncate during import - preserve full data
         if (state._importInProgress) {

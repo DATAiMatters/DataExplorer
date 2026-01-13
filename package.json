@@ -6,6 +6,7 @@
   "license": "MIT",
   "private": true,
   "type": "module",
+  "main": "electron/main.cjs",
   "keywords": [
     "data-visualization",
     "hierarchy",
@@ -19,9 +20,36 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "bundle": "pnpm build && parcel build index.html --no-source-maps --dist-dir ./parcel-dist && html-inline ./parcel-dist/index.html > bundle.html && rm -rf ./parcel-dist",
+    "electron:dev": "cross-env ELECTRON_START_URL=http://localhost:5173 electron .",
+    "electron:pack": "cross-env ELECTRON=true pnpm build && electron-builder --dir",
+    "electron:build": "cross-env ELECTRON=true pnpm build && electron-builder",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
+  },
+  "build": {
+    "appId": "com.pedrocardoso.dataexplorer",
+    "productName": "Data Explorer",
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "public"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    }
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -88,6 +116,9 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "cross-env": "^7.0.3",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
     "globals": "^16.5.0",
     "html-inline": "^1.2.0",
     "parcel": "^2.16.3",

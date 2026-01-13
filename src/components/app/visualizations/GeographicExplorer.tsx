@@ -309,9 +309,9 @@ export function GeographicExplorer({ bundle }: Props) {
         <div className="h-full overflow-auto p-4">
           <svg
             ref={svgRef}
-            width={width}
-            height={height}
-            className="cursor-grab active:cursor-grabbing"
+            viewBox={`0 0 ${width} ${height}`}
+            className="cursor-grab active:cursor-grabbing w-full h-full"
+            style={{ minWidth: width, minHeight: height }}
           >
             <g ref={gRef}>
               {/* Grid lines for reference */}

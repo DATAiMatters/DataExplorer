@@ -289,9 +289,9 @@ export function TimelineExplorer({ bundle }: Props) {
           {viewType === 'gantt' ? (
             <svg
               ref={svgRef}
-              width={width}
-              height={height}
-              className="cursor-grab active:cursor-grabbing"
+              viewBox={`0 0 ${width} ${height}`}
+              className="cursor-grab active:cursor-grabbing w-full h-full"
+              style={{ minWidth: width, minHeight: height }}
             >
               <g ref={gRef}>
                 {/* X Axis */}

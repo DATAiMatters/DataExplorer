@@ -76,6 +76,11 @@ src/
 - Uses Zustand with localStorage persistence
 - Access pattern: `const foo = useAppStore((s) => s.foo)`
 
+### Persistence & migrations
+- localStorage state is versioned in `src/store/index.ts` (`persist` options).
+- When default schemas change, bump the `version` and update `migrate` so new defaults merge into stored schemas without deleting user customizations.
+- Resetting schemas in the UI restores `defaultSchemas`, but migration handles existing users automatically.
+
 ## Code Patterns
 
 ### State access in components
