@@ -43,6 +43,7 @@ export function SchemaManager() {
   const updateSchema = useAppStore((s) => s.updateSchema);
   const deleteSchema = useAppStore((s) => s.deleteSchema);
   const resetSchemas = useAppStore((s) => s.resetSchemas);
+  const setViewMode = useAppStore((s) => s.setViewMode);
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingSchema, setEditingSchema] = useState<SemanticSchema | null>(null);
@@ -117,6 +118,15 @@ export function SchemaManager() {
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium text-zinc-300">Semantic Roles</h4>
                       <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="bg-emerald-600 hover:bg-emerald-700 h-7"
+                          onClick={() => setViewMode('bundles')}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          New Bundle
+                        </Button>
                         <Dialog
                           open={editingSchema?.id === schema.id}
                           onOpenChange={(open) => !open && setEditingSchema(null)}
