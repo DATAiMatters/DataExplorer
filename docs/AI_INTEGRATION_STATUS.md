@@ -358,6 +358,15 @@ pnpm bundle
   - Consistent purple AI theme across all features
   - Bundle size: 778 KB (single file)
 
+- **v0.4.0** (2026-01-12) - Export/Import System Overhaul
+  - Fixed exportConfig() to export full data (schemas, bundles, relationships, AI settings)
+  - Fixed importConfig() to restore all data types with validation
+  - Added _importInProgress flag to prevent truncation during import
+  - API keys now stripped on export for security
+  - Added 75MB soft warning for large imports
+  - Updated localStorage auto-persist limits: 5MB rawData, 10K rows parsedData
+  - Created comprehensive documentation: docs/EXPORT_IMPORT_SYSTEM.md
+
 ---
 
 **Status:** ✅ ALL PHASES COMPLETE - Full AI Integration feature implemented and ready for use.

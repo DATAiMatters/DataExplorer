@@ -16,6 +16,7 @@ interface AppStore {
   explorerState: ExplorerState;
   relationshipTypeConfig: RelationshipTypeConfig;
   aiSettings: AISettings;
+  _importInProgress?: boolean; // Internal flag to prevent truncation during import
 
   // Schema actions
   addSchema: (schema: SemanticSchema) => void;
@@ -216,16 +217,14 @@ export const useAppStore = create<AppStore>()(
         const state = get();
         return JSON.stringify(
           {
+            version: '1.0',
             schemas: state.schemas,
-            bundles: state.bundles.map((b) => ({
-              ...b,
-              // Exclude raw data for smaller export
-              source: {
-                ...b.source,
-                rawData: undefined,
-                parsedData: undefined,
-              },
-            })),
+            bundles: state.bundles, // Full data, no truncation
+            relationshipTypeConfig: state.relationshipTypeConfig,
+            aiSettings: {
+              ...state.aiSettings,
+              apiKey: '', // Strip API key for security
+            },
           },
           null,
           2
@@ -235,31 +234,79 @@ export const useAppStore = create<AppStore>()(
       importConfig: (json) => {
         try {
           const config = JSON.parse(json);
-          if (config.schemas) {
+
+          // Validate structure
+          if (!config || typeof config !== 'object') {
+            console.error('Invalid config: not an object');
+            return;
+          }
+
+          // Set flag to prevent truncation during import
+          set({ _importInProgress: true });
+
+          // Import schemas
+          if (Array.isArray(config.schemas)) {
             set({ schemas: config.schemas });
           }
-          // Note: bundles without data need to be re-uploaded
+
+          // Import bundles with full data
+          if (Array.isArray(config.bundles)) {
+            set({ bundles: config.bundles });
+          }
+
+          // Import relationships
+          if (config.relationshipTypeConfig?.types) {
+            set({ relationshipTypeConfig: config.relationshipTypeConfig });
+          }
+
+          // Import AI settings (preserve current apiKey if not in import)
+          if (config.aiSettings) {
+            const currentKey = get().aiSettings.apiKey;
+            set({
+              aiSettings: {
+                ...config.aiSettings,
+                apiKey: config.aiSettings.apiKey || currentKey,
+              },
+            });
+          }
+
+          // Clear flag after persistence completes
+          setTimeout(() => set({ _importInProgress: false }), 100);
         } catch (e) {
+          set({ _importInProgress: false });
           console.error('Failed to import config:', e);
         }
       },
     }),
     {
       name: 'data-explorer-storage',
-      partialize: (state) => ({
-        schemas: state.schemas,
-        bundles: state.bundles.map((b) => ({
-          ...b,
-          source: {
-            ...b.source,
-            // Don't persist large raw data
-            rawData: b.source.rawData.length > 100000 ? '' : b.source.rawData,
-            parsedData: b.source.parsedData.length > 1000 ? [] : b.source.parsedData,
-          },
-        })),
-        relationshipTypeConfig: state.relationshipTypeConfig,
-        aiSettings: state.aiSettings,
-      }),
+      partialize: (state) => {
+        // Don't truncate during import - preserve full data
+        if (state._importInProgress) {
+          return {
+            schemas: state.schemas,
+            bundles: state.bundles,
+            relationshipTypeConfig: state.relationshipTypeConfig,
+            aiSettings: state.aiSettings,
+          };
+        }
+
+        // Normal auto-save truncation for localStorage (browser constraint)
+        return {
+          schemas: state.schemas,
+          bundles: state.bundles.map((b) => ({
+            ...b,
+            source: {
+              ...b.source,
+              // Truncate for localStorage auto-persist (5MB limit)
+              rawData: b.source.rawData.length > 5_000_000 ? '' : b.source.rawData,
+              parsedData: b.source.parsedData.length > 10_000 ? [] : b.source.parsedData,
+            },
+          })),
+          relationshipTypeConfig: state.relationshipTypeConfig,
+          aiSettings: state.aiSettings,
+        };
+      },
     }
   )
 );

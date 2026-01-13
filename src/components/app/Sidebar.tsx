@@ -38,6 +38,14 @@ export function Sidebar() {
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
+        // Warn about large files (75MB threshold)
+        if (file.size > 75 * 1024 * 1024) {
+          const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+          if (!confirm(`Large file detected: ${sizeMB}MB. This may slow down your browser. Continue?`)) {
+            return;
+          }
+        }
+
         const reader = new FileReader();
         reader.onload = (ev) => {
           const text = ev.target?.result as string;
