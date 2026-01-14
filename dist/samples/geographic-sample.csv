@@ -1,0 +1,11 @@
+location_id,location_name,latitude,longitude,address,region,metric_value,category
+LOC-001,San Francisco HQ,37.7749,-122.4194,"100 Market St, San Francisco, CA",West Coast,1200,Headquarters
+LOC-002,New York Office,40.7128,-74.0060,"350 5th Ave, New York, NY",East Coast,850,Office
+LOC-003,Seattle Office,47.6062,-122.3321,"400 Broad St, Seattle, WA",West Coast,650,Office
+LOC-004,Austin Office,30.2672,-97.7431,"500 Congress Ave, Austin, TX",Central,420,Office
+LOC-005,Boston Office,42.3601,-71.0589,"200 Berkeley St, Boston, MA",East Coast,380,Office
+LOC-006,Chicago Warehouse,41.8781,-87.6298,"300 S Wacker Dr, Chicago, IL",Central,950,Warehouse
+LOC-007,Los Angeles Distribution,34.0522,-118.2437,"700 Figueroa St, Los Angeles, CA",West Coast,1100,Distribution
+LOC-008,Miami Distribution,25.7617,-80.1918,"100 Biscayne Blvd, Miami, FL",East Coast,720,Distribution
+LOC-009,Denver Office,39.7392,-104.9903,"1801 California St, Denver, CO",Central,340,Office
+LOC-010,Portland Office,45.5152,-122.6784,"1000 SW Broadway, Portland, OR",West Coast,290,Office

@@ -1,0 +1,11 @@
+event_id,event_name,start_date,end_date,duration,category,status,description
+E001,Project Kickoff,2024-01-01,2024-01-05,5,Planning,completed,Initial project planning and team setup
+E002,Requirements Gathering,2024-01-06,2024-01-20,15,Planning,completed,Stakeholder interviews and documentation
+E003,Design Phase,2024-01-21,2024-02-10,21,Design,completed,UI/UX and architecture design
+E004,Frontend Development,2024-02-11,2024-03-15,34,Development,in progress,React components and styling
+E005,Backend Development,2024-02-11,2024-03-20,39,Development,in progress,API and database implementation
+E006,Testing,2024-03-16,2024-04-05,21,QA,planned,Unit and integration testing
+E007,User Acceptance Testing,2024-04-06,2024-04-15,10,QA,planned,Client testing and feedback
+E008,Bug Fixes,2024-04-16,2024-04-25,10,Development,planned,Address UAT findings
+E009,Deployment Preparation,2024-04-26,2024-04-30,5,Operations,planned,Infrastructure and deployment setup
+E010,Go Live,2024-05-01,2024-05-01,1,Operations,planned,Production deployment

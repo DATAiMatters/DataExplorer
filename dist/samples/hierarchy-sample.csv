@@ -1,0 +1,20 @@
+node_id,node_label,parent_id,metric
+PLANT-001,Manufacturing Plant,,1000
+AREA-A,Production Area A,PLANT-001,450
+AREA-B,Production Area B,PLANT-001,550
+LINE-A1,Assembly Line 1,AREA-A,200
+LINE-A2,Assembly Line 2,AREA-A,250
+LINE-B1,Assembly Line 3,AREA-B,280
+LINE-B2,Assembly Line 4,AREA-B,270
+STATION-A1-1,Welding Station,LINE-A1,80
+STATION-A1-2,Paint Station,LINE-A1,70
+STATION-A1-3,Assembly Station,LINE-A1,50
+STATION-A2-1,Welding Station,LINE-A2,90
+STATION-A2-2,Paint Station,LINE-A2,85
+STATION-A2-3,Assembly Station,LINE-A2,75
+STATION-B1-1,Welding Station,LINE-B1,95
+STATION-B1-2,Paint Station,LINE-B1,90
+STATION-B1-3,Assembly Station,LINE-B1,95
+STATION-B2-1,Welding Station,LINE-B2,85
+STATION-B2-2,Paint Station,LINE-B2,95
+STATION-B2-3,Assembly Station,LINE-B2,90

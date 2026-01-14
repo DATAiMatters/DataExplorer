@@ -1,0 +1,16 @@
+row_id,category,measure,timestamp,text
+TXN-001,Electronics,599.99,2024-01-15T10:30:00Z,Laptop purchase with warranty
+TXN-002,Clothing,89.50,2024-01-15T11:45:00Z,Winter jacket - blue color
+TXN-003,Electronics,1299.00,2024-01-15T14:20:00Z,High-end smartphone
+TXN-004,Home,249.99,2024-01-16T09:15:00Z,Coffee maker - programmable
+TXN-005,Electronics,49.99,2024-01-16T10:30:00Z,Wireless mouse
+TXN-006,Clothing,129.00,2024-01-16T13:00:00Z,Running shoes - size 10
+TXN-007,Home,399.00,2024-01-17T08:45:00Z,Vacuum cleaner - cordless
+TXN-008,Electronics,799.99,2024-01-17T11:20:00Z,Tablet with keyboard
+TXN-009,Clothing,65.00,2024-01-17T15:30:00Z,Cotton t-shirts - pack of 3
+TXN-010,Home,149.50,2024-01-18T10:00:00Z,Bedding set - queen size
+TXN-011,Electronics,299.99,2024-01-18T12:30:00Z,Noise-canceling headphones
+TXN-012,Clothing,179.00,2024-01-18T14:45:00Z,Designer jeans
+TXN-013,Home,89.99,2024-01-19T09:30:00Z,Kitchen knife set
+TXN-014,Electronics,1599.00,2024-01-19T11:00:00Z,Gaming console bundle
+TXN-015,Clothing,45.00,2024-01-19T16:00:00Z,Baseball cap

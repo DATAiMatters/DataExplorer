@@ -142,10 +142,23 @@ export interface AIPreset {
 }
 
 // ============================================
+// JOURNAL TYPES
+// ============================================
+
+export interface JournalEntry {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  tags?: string[];
+}
+
+// ============================================
 // UI STATE TYPES
 // ============================================
 
-export type ViewMode = 'bundles' | 'schemas' | 'explorer' | 'relationships' | 'ai-settings';
+export type ViewMode = 'bundles' | 'schemas' | 'explorer' | 'relationships' | 'ai-settings' | 'journal';
 
 export interface ExplorerState {
   selectedBundleId: string | null;

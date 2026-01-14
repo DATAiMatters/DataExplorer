@@ -1,0 +1,16 @@
+source,target,flow_value,flow_type,description
+Budget,Engineering,450000,allocation,Engineering department allocation
+Budget,Marketing,320000,allocation,Marketing department allocation
+Budget,Sales,280000,allocation,Sales department allocation
+Budget,Operations,200000,allocation,Operations department allocation
+Engineering,Product Development,280000,transfer,Product development expenses
+Engineering,Infrastructure,120000,transfer,Infrastructure and tools
+Engineering,R&D,50000,transfer,Research and development
+Marketing,Digital Ads,180000,transfer,Online advertising spend
+Marketing,Content,80000,transfer,Content creation
+Marketing,Events,60000,transfer,Events and conferences
+Sales,Team Salaries,180000,transfer,Sales team compensation
+Sales,Travel,50000,transfer,Client meetings and travel
+Sales,Tools,50000,transfer,CRM and sales tools
+Operations,Facilities,120000,transfer,Office and facilities
+Operations,IT,80000,transfer,IT support and systems

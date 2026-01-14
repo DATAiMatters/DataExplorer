@@ -6,6 +6,7 @@ import { SchemaManager } from './SchemaManager';
 import { Explorer } from './Explorer';
 import { RelationshipManager } from './RelationshipManager';
 import { AISettings } from './AISettings';
+import { Journal } from './Journal';
 import { WelcomeTour } from '@/components/ui/WelcomeTour';
 import { ContextualHelp } from '@/components/ui/ContextualHelp';
 import { DevGuide } from '@/components/ui/DevGuide';
@@ -44,6 +45,7 @@ export function AppLayout() {
         {viewMode === 'schemas' && <SchemaManager />}
         {viewMode === 'relationships' && <RelationshipManager />}
         {viewMode === 'explorer' && <Explorer />}
+        {viewMode === 'journal' && <Journal />}
         {viewMode === 'ai-settings' && <AISettings />}
 
         {/* Contextual Help - Floating button per view */}

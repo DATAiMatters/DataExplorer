@@ -1,0 +1,13 @@
+source_node,target_node,edge_weight,edge_label,relationship_type,cardinality
+Database,API,100,queries,depends on,N:1
+API,WebApp,200,requests,sources from,1:N
+API,MobileApp,150,requests,sources from,1:N
+Cache,API,80,cached responses,depends on,N:1
+Queue,API,50,messages,depends on,N:1
+WebApp,CDN,300,static assets,depends on,N:1
+MobileApp,CDN,250,static assets,depends on,N:1
+API,Analytics,75,events,aggregates,1:1
+API,Logger,90,logs,aggregates,1:1
+Database,Backup,50,snapshots,depends on,1:1
+Auth,API,120,tokens,depends on,1:N
+Auth,Database,60,user data,depends on,N:1

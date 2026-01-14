@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { parseFile, generateId } from '@/lib/dataUtils';
 import { callLLM } from '@/lib/aiService';
@@ -34,10 +34,19 @@ export function BundleManager() {
   const deleteBundle = useAppStore((s) => s.deleteBundle);
   const setSelectedBundle = useAppStore((s) => s.setSelectedBundle);
   const setViewMode = useAppStore((s) => s.setViewMode);
+  const preselectedSchemaId = useAppStore((s) => s.preselectedSchemaId);
+  const setPreselectedSchemaId = useAppStore((s) => s.setPreselectedSchemaId);
 
   const [isCreating, setIsCreating] = useState(false);
   const [reloadingBundleId, setReloadingBundleId] = useState<string | null>(null);
   const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
+
+  // Auto-open dialog when coming from schema manager
+  useEffect(() => {
+    if (preselectedSchemaId) {
+      setIsCreating(true);
+    }
+  }, [preselectedSchemaId]);
 
   const handleExplore = (bundleId: string) => {
     setSelectedBundle(bundleId);
@@ -119,11 +128,16 @@ export function BundleManager() {
             </DialogHeader>
             <BundleCreator
               schemas={schemas}
+              initialSchemaId={preselectedSchemaId || undefined}
               onComplete={(bundle) => {
                 addBundle(bundle);
                 setIsCreating(false);
+                setPreselectedSchemaId(null);
               }}
-              onCancel={() => setIsCreating(false)}
+              onCancel={() => {
+                setIsCreating(false);
+                setPreselectedSchemaId(null);
+              }}
             />
           </DialogContent>
         </Dialog>
@@ -259,15 +273,16 @@ export function BundleManager() {
 
 interface BundleCreatorProps {
   schemas: SemanticSchema[];
+  initialSchemaId?: string;
   onComplete: (bundle: DataBundle) => void;
   onCancel: () => void;
 }
 
-function BundleCreator({ schemas, onComplete, onCancel }: BundleCreatorProps) {
+function BundleCreator({ schemas, initialSchemaId, onComplete, onCancel }: BundleCreatorProps) {
   const aiSettings = useAppStore((s) => s.aiSettings);
   const [step, setStep] = useState<'upload' | 'configure' | 'map'>('upload');
   const [name, setName] = useState('');
-  const [schemaId, setSchemaId] = useState('');
+  const [schemaId, setSchemaId] = useState(initialSchemaId || '');
   const [source, setSource] = useState<DataSource | null>(null);
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
   const [aiSuggesting, setAiSuggesting] = useState(false);
@@ -284,21 +299,47 @@ function BundleCreator({ schemas, onComplete, onCancel }: BundleCreatorProps) {
       const rawData = ev.target?.result as string;
       try {
         const { data, columns } = parseFile(file.name, rawData);
-        setSource({
+        const newSource: DataSource = {
           type: file.name.endsWith('.json') ? 'json' : 'csv',
           fileName: file.name,
           rawData,
           parsedData: data,
           columns,
-        });
+        };
+        setSource(newSource);
         setName(file.name.replace(/\.(csv|json)$/i, ''));
-        setStep('configure');
+
+        // If we already have a schema selected, auto-map immediately
+        if (schemaId) {
+          const schema = schemas.find((s) => s.id === schemaId);
+          if (schema) {
+            const autoMappings: ColumnMapping[] = [];
+            for (const role of schema.roles) {
+              const matchingColumn = columns.find(
+                (col) =>
+                  col.toLowerCase().replace(/[_\s-]/g, '') ===
+                  role.id.toLowerCase().replace(/[_\s-]/g, '')
+              );
+              if (matchingColumn) {
+                autoMappings.push({
+                  sourceColumn: matchingColumn,
+                  roleId: role.id,
+                  displayName: matchingColumn,
+                });
+              }
+            }
+            setMappings(autoMappings);
+            setStep('map'); // Skip configure step, go straight to mapping
+          }
+        } else {
+          setStep('configure');
+        }
       } catch (err) {
         console.error('Failed to parse file:', err);
       }
     };
     reader.readAsText(file);
-  }, []);
+  }, [schemaId, schemas]);
 
   const handleSchemaSelect = (id: string) => {
     setSchemaId(id);

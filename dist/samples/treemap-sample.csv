@@ -1,0 +1,17 @@
+category,parent_category,value,color_metric,label
+Technology,,450000,12.5,Technology Dept
+Marketing,,320000,8.2,Marketing Dept
+Operations,,280000,6.8,Operations Dept
+HR,,150000,4.2,Human Resources
+Software,Technology,180000,15.2,Software Development
+Hardware,Technology,120000,9.8,Hardware & Infrastructure
+Cloud,Technology,150000,12.5,Cloud Services
+Digital,Marketing,180000,10.5,Digital Marketing
+Traditional,Marketing,90000,5.2,Traditional Media
+Events,Marketing,50000,8.8,Events & Conferences
+Facilities,Operations,120000,6.5,Facilities Management
+Logistics,Operations,100000,7.2,Logistics
+Support,Operations,60000,6.5,Customer Support
+Recruitment,HR,60000,4.8,Recruitment
+Training,HR,50000,3.5,Training & Development
+Benefits,HR,40000,4.2,Benefits & Compensation

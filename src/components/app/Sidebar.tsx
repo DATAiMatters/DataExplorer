@@ -1,6 +1,6 @@
 import { useAppStore } from '@/store';
 import { cn } from '@/lib/utils';
-import { Database, Layers, Compass, Download, Upload, GitBranch, Sparkles } from 'lucide-react';
+import { Database, Layers, Compass, Download, Upload, GitBranch, Sparkles, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -12,6 +12,7 @@ const navItems: { mode: ViewMode; icon: typeof Database; label: string }[] = [
   { mode: 'schemas', icon: Layers, label: 'Semantic Schemas' },
   { mode: 'relationships', icon: GitBranch, label: 'Relationships' },
   { mode: 'explorer', icon: Compass, label: 'Explorer' },
+  { mode: 'journal', icon: BookOpen, label: 'Journal' },
   { mode: 'ai-settings', icon: Sparkles, label: 'AI Integration' },
 ];
 

@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Plus, RotateCcw, Trash2, Edit2, FileText, Network, GitBranch, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp } from 'lucide-react';
-import { generateId } from '@/lib/dataUtils';
-import type { SemanticSchema, SemanticRole, DataType } from '@/types';
+import { Plus, RotateCcw, Trash2, Edit2, FileText, Network, GitBranch, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp, Beaker } from 'lucide-react';
+import { generateId, parseFile } from '@/lib/dataUtils';
+import type { SemanticSchema, SemanticRole, DataType, DataBundle, ColumnMapping } from '@/types';
 
 const dataTypeIcons = {
   hierarchy: GitBranch,
@@ -37,6 +37,17 @@ const dataTypeColors = {
   flow: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
 };
 
+const sampleDataFiles: Record<DataType, string> = {
+  hierarchy: '/samples/hierarchy-sample.csv',
+  tabular: '/samples/tabular-sample.csv',
+  network: '/samples/network-sample.csv',
+  timeline: '/samples/timeline-sample.csv',
+  treemap: '/samples/treemap-sample.csv',
+  heatmap: '/samples/heatmap-sample.csv',
+  geographic: '/samples/geographic-sample.csv',
+  flow: '/samples/flow-sample.csv',
+};
+
 export function SchemaManager() {
   const schemas = useAppStore((s) => s.schemas);
   const addSchema = useAppStore((s) => s.addSchema);
@@ -44,9 +55,63 @@ export function SchemaManager() {
   const deleteSchema = useAppStore((s) => s.deleteSchema);
   const resetSchemas = useAppStore((s) => s.resetSchemas);
   const setViewMode = useAppStore((s) => s.setViewMode);
+  const setPreselectedSchemaId = useAppStore((s) => s.setPreselectedSchemaId);
+  const addBundle = useAppStore((s) => s.addBundle);
+  const setSelectedBundle = useAppStore((s) => s.setSelectedBundle);
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingSchema, setEditingSchema] = useState<SemanticSchema | null>(null);
+
+  const handleLoadSample = async (schema: SemanticSchema) => {
+    const sampleFile = sampleDataFiles[schema.dataType];
+    if (!sampleFile) return;
+
+    try {
+      const response = await fetch(sampleFile);
+      const rawData = await response.text();
+      const { data, columns } = parseFile(`${schema.dataType}-sample.csv`, rawData);
+
+      // Auto-map columns
+      const autoMappings: ColumnMapping[] = [];
+      for (const role of schema.roles) {
+        const matchingColumn = columns.find(
+          (col) =>
+            col.toLowerCase().replace(/[_\s-]/g, '') ===
+            role.id.toLowerCase().replace(/[_\s-]/g, '')
+        );
+        if (matchingColumn) {
+          autoMappings.push({
+            sourceColumn: matchingColumn,
+            roleId: role.id,
+            displayName: matchingColumn,
+          });
+        }
+      }
+
+      // Create bundle
+      const bundle: DataBundle = {
+        id: generateId(),
+        name: `${schema.name} Sample`,
+        schemaId: schema.id,
+        source: {
+          type: 'csv',
+          fileName: `${schema.dataType}-sample.csv`,
+          rawData,
+          parsedData: data,
+          columns,
+        },
+        mappings: autoMappings,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      addBundle(bundle);
+      setSelectedBundle(bundle.id);
+      setViewMode('explorer');
+    } catch (error) {
+      console.error('Failed to load sample data:', error);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col p-6">
@@ -100,15 +165,43 @@ export function SchemaManager() {
                 className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900/50"
               >
                 <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-zinc-800/50">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
                       <Icon className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <div className="text-left">
+                    <div className="text-left w-96 min-w-0">
                       <div className="font-medium">{schema.name}</div>
                       <div className="text-xs text-zinc-500">{schema.description}</div>
                     </div>
-                    <Badge variant="outline" className={`ml-auto mr-4 ${dataTypeColors[schema.dataType]}`}>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700 hover:bg-zinc-800 h-8 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLoadSample(schema);
+                        }}
+                        title="Load sample dataset"
+                      >
+                        <Beaker className="w-3.5 h-3.5 mr-1.5" />
+                        Load Sample
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-emerald-600 hover:bg-emerald-700 h-8 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreselectedSchemaId(schema.id);
+                          setViewMode('bundles');
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1.5" />
+                        New Bundle
+                      </Button>
+                    </div>
+                    <Badge variant="outline" className={`ml-auto mr-4 shrink-0 ${dataTypeColors[schema.dataType]}`}>
                       {schema.dataType}
                     </Badge>
                   </div>
@@ -118,15 +211,6 @@ export function SchemaManager() {
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium text-zinc-300">Semantic Roles</h4>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="bg-emerald-600 hover:bg-emerald-700 h-7"
-                          onClick={() => setViewMode('bundles')}
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          New Bundle
-                        </Button>
                         <Dialog
                           open={editingSchema?.id === schema.id}
                           onOpenChange={(open) => !open && setEditingSchema(null)}

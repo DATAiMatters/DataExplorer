@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { SemanticSchema, DataBundle, ViewMode, ExplorerState, AISettings } from '@/types';
+import type { SemanticSchema, DataBundle, ViewMode, ExplorerState, AISettings, JournalEntry } from '@/types';
 import { defaultSchemas } from '@/data/schemas';
 import {
   defaultRelationshipTypeConfig,
@@ -16,6 +16,8 @@ interface AppStore {
   explorerState: ExplorerState;
   relationshipTypeConfig: RelationshipTypeConfig;
   aiSettings: AISettings;
+  journalEntries: JournalEntry[];
+  preselectedSchemaId: string | null; // For pre-filling bundle creation
   _importInProgress?: boolean; // Internal flag to prevent truncation during import
 
   // Schema actions
@@ -31,6 +33,7 @@ interface AppStore {
 
   // View actions
   setViewMode: (mode: ViewMode) => void;
+  setPreselectedSchemaId: (id: string | null) => void;
 
   // Explorer actions
   setSelectedBundle: (id: string | null) => void;
@@ -48,6 +51,11 @@ interface AppStore {
 
   // AI settings actions
   setAISettings: (settings: Partial<AISettings>) => void;
+
+  // Journal actions
+  addJournalEntry: (entry: JournalEntry) => void;
+  updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => void;
+  deleteJournalEntry: (id: string) => void;
 
   // Import/Export
   exportConfig: () => string;
@@ -78,6 +86,8 @@ export const useAppStore = create<AppStore>()(
         model: '',
         maxTokens: 1000,
       },
+      journalEntries: [],
+      preselectedSchemaId: null,
 
       // Schema actions
       addSchema: (schema) =>
@@ -124,6 +134,7 @@ export const useAppStore = create<AppStore>()(
 
       // View actions
       setViewMode: (mode) => set({ viewMode: mode }),
+      setPreselectedSchemaId: (id) => set({ preselectedSchemaId: id }),
 
       // Explorer actions
       setSelectedBundle: (id) =>
@@ -212,6 +223,24 @@ export const useAppStore = create<AppStore>()(
           aiSettings: { ...state.aiSettings, ...settings },
         })),
 
+      // Journal actions
+      addJournalEntry: (entry) =>
+        set((state) => ({
+          journalEntries: [...state.journalEntries, entry],
+        })),
+
+      updateJournalEntry: (id, updates) =>
+        set((state) => ({
+          journalEntries: state.journalEntries.map((e) =>
+            e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e
+          ),
+        })),
+
+      deleteJournalEntry: (id) =>
+        set((state) => ({
+          journalEntries: state.journalEntries.filter((e) => e.id !== id),
+        })),
+
       // Import/Export
       exportConfig: () => {
         const state = get();
@@ -225,6 +254,7 @@ export const useAppStore = create<AppStore>()(
               ...state.aiSettings,
               apiKey: '', // Strip API key for security
             },
+            journalEntries: state.journalEntries,
           },
           null,
           2
@@ -270,6 +300,11 @@ export const useAppStore = create<AppStore>()(
             });
           }
 
+          // Import journal entries
+          if (Array.isArray(config.journalEntries)) {
+            set({ journalEntries: config.journalEntries });
+          }
+
           // Clear flag after persistence completes
           setTimeout(() => set({ _importInProgress: false }), 100);
         } catch (e) {
@@ -300,6 +335,7 @@ export const useAppStore = create<AppStore>()(
             bundles: state.bundles,
             relationshipTypeConfig: state.relationshipTypeConfig,
             aiSettings: state.aiSettings,
+            journalEntries: state.journalEntries,
           };
         }
 
@@ -317,6 +353,7 @@ export const useAppStore = create<AppStore>()(
           })),
           relationshipTypeConfig: state.relationshipTypeConfig,
           aiSettings: state.aiSettings,
+          journalEntries: state.journalEntries,
         };
       },
     }
