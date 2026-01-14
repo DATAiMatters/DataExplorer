@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { parseFile } from '@/lib/dataUtils';
 import { callLLM } from '@/lib/aiService';
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Compass, RefreshCw, Upload, Plus, Sparkles, Loader2, FileText } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Upload, Plus, Sparkles, Loader2, FileText } from 'lucide-react';
 
 export function Explorer() {
   const bundles = useAppStore((s) => s.bundles);
@@ -35,6 +35,13 @@ export function Explorer() {
   const selectedSchema = selectedBundle
     ? schemas.find((s) => s.id === selectedBundle.schemaId)
     : null;
+
+  // Redirect to bundles view if no bundle is selected
+  useEffect(() => {
+    if (!selectedBundle) {
+      setViewMode('bundles');
+    }
+  }, [selectedBundle, setViewMode]);
 
   const handleReloadFile = useCallback((file: File) => {
     if (!selectedBundle) return;
@@ -97,47 +104,9 @@ export function Explorer() {
     }
   };
 
-  // No bundle selected - show selection prompt
+  // No bundle selected - redirect happens in useEffect above
   if (!selectedBundle) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center p-6">
-        <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-6">
-          <Compass className="w-10 h-10 text-zinc-600" />
-        </div>
-        <h2 className="text-xl font-semibold text-zinc-200 mb-2">Select a Data Bundle</h2>
-        <p className="text-zinc-500 text-center max-w-md mb-6">
-          Choose a bundle to explore, or go back to create one if you haven't yet.
-        </p>
-
-        {bundles.length > 0 ? (
-          <div className="w-full max-w-sm space-y-4">
-            <Select onValueChange={setSelectedBundle}>
-              <SelectTrigger className="bg-zinc-800 border-zinc-700">
-                <SelectValue placeholder="Select a bundle..." />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-zinc-700">
-                {bundles.map((bundle) => {
-                  const schema = schemas.find((s) => s.id === bundle.schemaId);
-                  return (
-                    <SelectItem key={bundle.id} value={bundle.id}>
-                      <span>{bundle.name}</span>
-                      <span className="text-zinc-500 ml-2 text-xs">({schema?.dataType})</span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : (
-          <Button
-            onClick={() => setViewMode('bundles')}
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
-            Create Your First Bundle
-          </Button>
-        )}
-      </div>
-    );
+    return null;
   }
 
   return (
