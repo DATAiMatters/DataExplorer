@@ -1,17 +1,30 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { SemanticSchema, DataBundle, ViewMode, ExplorerState, AISettings, JournalEntry } from '@/types';
+import type {
+  SemanticSchema,
+  DataBundle,
+  ViewMode,
+  ExplorerState,
+  AISettings,
+  JournalEntry,
+  JoinDefinition,
+  VirtualBundle,
+  JoinSuggestion,
+} from '@/types';
 import { defaultSchemas } from '@/data/schemas';
 import {
   defaultRelationshipTypeConfig,
   type RelationshipTypeConfig,
   type RelationshipType,
 } from '@/config/relationshipTypes';
+import { LineageGraph } from '@/lib/lineageGraph';
 
 interface AppStore {
   // State
   schemas: SemanticSchema[];
   bundles: DataBundle[];
+  joins: JoinDefinition[];
+  virtualBundles: VirtualBundle[];
   viewMode: ViewMode;
   explorerState: ExplorerState;
   relationshipTypeConfig: RelationshipTypeConfig;
@@ -57,6 +70,24 @@ interface AppStore {
   updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => void;
   deleteJournalEntry: (id: string) => void;
 
+  // Join actions
+  addJoin: (join: JoinDefinition) => void;
+  updateJoin: (id: string, updates: Partial<JoinDefinition>) => void;
+  deleteJoin: (id: string) => void;
+
+  // Virtual Bundle actions
+  addVirtualBundle: (vBundle: VirtualBundle) => void;
+  updateVirtualBundle: (id: string, updates: Partial<VirtualBundle>) => void;
+  deleteVirtualBundle: (id: string) => void;
+
+  // Lineage actions (computed from joins and bundles)
+  getLineageGraph: () => LineageGraph;
+  getUpstreamBundles: (bundleId: string) => DataBundle[];
+  getDownstreamBundles: (bundleId: string) => (DataBundle | VirtualBundle)[];
+
+  // AI-powered features (future Cognee integration)
+  suggestJoins: () => Promise<JoinSuggestion[]>;
+
   // Import/Export
   exportConfig: () => string;
   importConfig: (json: string) => void;
@@ -75,6 +106,8 @@ export const useAppStore = create<AppStore>()(
       // Initial state
       schemas: defaultSchemas,
       bundles: [],
+      joins: [],
+      virtualBundles: [],
       viewMode: 'bundles',
       explorerState: initialExplorerState,
       relationshipTypeConfig: defaultRelationshipTypeConfig,
@@ -241,6 +274,90 @@ export const useAppStore = create<AppStore>()(
           journalEntries: state.journalEntries.filter((e) => e.id !== id),
         })),
 
+      // Join actions
+      addJoin: (join) =>
+        set((state) => ({
+          joins: [...state.joins, join],
+        })),
+
+      updateJoin: (id, updates) =>
+        set((state) => ({
+          joins: state.joins.map((j) =>
+            j.id === id ? { ...j, ...updates, updatedAt: new Date().toISOString() } : j
+          ),
+        })),
+
+      deleteJoin: (id) =>
+        set((state) => ({
+          joins: state.joins.filter((j) => j.id !== id),
+          // Also remove any virtual bundles that depend on this join
+          virtualBundles: state.virtualBundles.filter(
+            (vb) => !vb.sourceJoinIds.includes(id)
+          ),
+        })),
+
+      // Virtual Bundle actions
+      addVirtualBundle: (vBundle) =>
+        set((state) => ({
+          virtualBundles: [...state.virtualBundles, vBundle],
+        })),
+
+      updateVirtualBundle: (id, updates) =>
+        set((state) => ({
+          virtualBundles: state.virtualBundles.map((vb) =>
+            vb.id === id ? { ...vb, ...updates, updatedAt: new Date().toISOString() } : vb
+          ),
+        })),
+
+      deleteVirtualBundle: (id) =>
+        set((state) => ({
+          virtualBundles: state.virtualBundles.filter((vb) => vb.id !== id),
+        })),
+
+      // Lineage actions
+      getLineageGraph: () => {
+        const state = get();
+        return LineageGraph.build(
+          state.bundles,
+          state.joins,
+          state.virtualBundles,
+          state.schemas
+        );
+      },
+
+      getUpstreamBundles: (bundleId) => {
+        const lineage = get().getLineageGraph();
+        const upstreamNodes = lineage.getUpstreamBundles(bundleId);
+        const state = get();
+        return upstreamNodes
+          .map((node) => state.bundles.find((b) => b.id === node.bundleId))
+          .filter((b): b is DataBundle => b !== undefined);
+      },
+
+      getDownstreamBundles: (bundleId) => {
+        const lineage = get().getLineageGraph();
+        const downstreamNodes = lineage.getDownstreamBundles(bundleId);
+        const state = get();
+        return downstreamNodes
+          .map((node) => {
+            const bundle = state.bundles.find((b) => b.id === node.bundleId);
+            if (bundle) return bundle;
+            return state.virtualBundles.find((vb) => vb.id === node.bundleId);
+          })
+          .filter((b): b is DataBundle | VirtualBundle => b !== undefined);
+      },
+
+      // AI-powered join suggestions (placeholder for future Cognee integration)
+      suggestJoins: async () => {
+        // TODO: Integrate with Cognee backend when available
+        // For now, return empty array
+        // Future implementation:
+        // - Send bundles to Cognee
+        // - Cognee analyzes data and suggests relationships
+        // - Return AI-powered join suggestions
+        return [];
+      },
+
       // Import/Export
       exportConfig: () => {
         const state = get();
@@ -249,6 +366,8 @@ export const useAppStore = create<AppStore>()(
             version: '1.0',
             schemas: state.schemas,
             bundles: state.bundles, // Full data, no truncation
+            joins: state.joins,
+            virtualBundles: state.virtualBundles,
             relationshipTypeConfig: state.relationshipTypeConfig,
             aiSettings: {
               ...state.aiSettings,
@@ -305,6 +424,16 @@ export const useAppStore = create<AppStore>()(
             set({ journalEntries: config.journalEntries });
           }
 
+          // Import joins
+          if (Array.isArray(config.joins)) {
+            set({ joins: config.joins });
+          }
+
+          // Import virtual bundles
+          if (Array.isArray(config.virtualBundles)) {
+            set({ virtualBundles: config.virtualBundles });
+          }
+
           // Clear flag after persistence completes
           setTimeout(() => set({ _importInProgress: false }), 100);
         } catch (e) {
@@ -333,6 +462,8 @@ export const useAppStore = create<AppStore>()(
           return {
             schemas: state.schemas,
             bundles: state.bundles,
+            joins: state.joins,
+            virtualBundles: state.virtualBundles,
             relationshipTypeConfig: state.relationshipTypeConfig,
             aiSettings: state.aiSettings,
             journalEntries: state.journalEntries,
@@ -351,6 +482,8 @@ export const useAppStore = create<AppStore>()(
               parsedData: b.source.parsedData.length > 10_000 ? [] : b.source.parsedData,
             },
           })),
+          joins: state.joins,
+          virtualBundles: state.virtualBundles,
           relationshipTypeConfig: state.relationshipTypeConfig,
           aiSettings: state.aiSettings,
           journalEntries: state.journalEntries,

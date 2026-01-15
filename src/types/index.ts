@@ -155,6 +155,74 @@ export interface JournalEntry {
 }
 
 // ============================================
+// JOIN & LINEAGE TYPES
+// ============================================
+
+export type JoinType = 'inner' | 'left' | 'right' | 'full';
+export type JoinOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'like';
+
+export interface JoinCondition {
+  leftRoleId: string;   // Semantic role from left bundle
+  rightRoleId: string;  // Semantic role from right bundle
+  operator: JoinOperator;
+}
+
+export interface JoinDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  leftBundleId: string;
+  rightBundleId: string;
+  joinType: JoinType;
+  conditions: JoinCondition[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VirtualBundle {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'join' | 'union' | 'filter';
+  sourceJoinIds: string[];  // References to JoinDefinitions
+  schemaId: string;         // Resulting schema after join
+  createdAt: string;
+  updatedAt: string;
+}
+
+// AI-powered join suggestions (future Cognee integration)
+export interface JoinSuggestion {
+  leftBundleId: string;
+  rightBundleId: string;
+  leftRoleId: string;
+  rightRoleId: string;
+  confidence: number;      // 0-1 score
+  reason: string;          // Why this join makes sense
+  dataOverlap?: number;    // % of matching values
+}
+
+// Lineage graph node types
+export type LineageNodeType = 'bundle' | 'virtual_bundle' | 'schema';
+export type LineageEdgeType = 'join' | 'derived_from' | 'uses_schema';
+
+export interface LineageNode {
+  id: string;
+  type: LineageNodeType;
+  label: string;
+  bundleId?: string;
+  schemaId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface LineageEdge {
+  source: string;
+  target: string;
+  type: LineageEdgeType;
+  label?: string;
+  joinId?: string;
+}
+
+// ============================================
 // UI STATE TYPES
 // ============================================
 
