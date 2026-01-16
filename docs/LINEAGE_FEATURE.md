@@ -204,6 +204,7 @@ class LineageGraph {
 - ✅ Quick actions: "View in Explorer"
 - ✅ Tabbed interface (Relationship Types | Data Joins)
 - ✅ Row count displays for source bundles
+- ✅ "Load Sample Data" button for instant SAP PM datasets
 
 ### 3. Join Execution Engine ✅
 **Location:** `src/lib/joinUtils.ts` + `src/store/index.ts`
@@ -218,6 +219,17 @@ class LineageGraph {
 - ✅ Virtual bundle execution on-demand
 - ✅ Test join without creating
 - ✅ Validation and error handling
+
+### 4. Sample Datasets ✅
+**Location:** `public/samples/joins/`
+
+**Datasets Included:**
+- ✅ SAP Functional Locations (30 FLOCs for fast food chain)
+- ✅ SAP Equipment Assets (43 commercial kitchen equipment items)
+- ✅ Pre-configured with semantic mappings
+- ✅ One-click load via "Load Sample Data" button
+- ✅ Comprehensive documentation with use cases
+- ✅ Realistic SAP PM data structure
 
 ## What's Next (Phase 3 - Intelligence)
 

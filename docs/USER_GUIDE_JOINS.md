@@ -6,6 +6,14 @@ This guide explains how to use DataExplorer's join feature to combine data from 
 
 Joins allow you to combine data from two different bundles based on common fields, similar to SQL joins but with a visual interface and semantic role mapping.
 
+## Quick Start: Load Sample Data
+
+Want to try joins right away? Click the **"Load Sample Data"** button in the Data Joins tab to instantly load two SAP-oriented datasets:
+- **SAP Functional Locations** - Restaurant chain hierarchy (30 locations)
+- **SAP Equipment Assets** - Commercial kitchen equipment (43 items)
+
+These datasets are pre-configured and ready to join on `FLOC_ID` = `FUNCTIONAL_LOCATION`. Perfect for learning how joins work!
+
 ## Accessing the Join Builder
 
 1. Navigate to **Relationships** in the sidebar (GitBranch icon)
@@ -338,8 +346,43 @@ Save test results for documentation:
 - **GitHub:** [View the repo](https://github.com/DATAiMatters/DataExplorer)
 - **Issues:** Report bugs or request features on GitHub Issues
 
+## Sample Datasets
+
+### SAP PM Sample Data
+
+The app includes two pre-built SAP PM (Plant Maintenance) datasets perfect for learning joins:
+
+**1. SAP Functional Locations**
+- 30 functional locations for "FastBite" fast food restaurant chain
+- Hierarchical structure: Corporate → Region → Store → Area
+- Locations across Northeast, Southeast, Midwest, West regions
+- Fields: FLOC_ID, FLOC_NAME, PARENT_FLOC, FLOC_TYPE, REGION, STATUS
+
+**2. SAP Equipment Assets**
+- 43 commercial equipment items (fryers, griddles, coolers, POS, etc.)
+- Realistic manufacturers: Pitco, Frymaster, Vulcan, Kolpak, NCR
+- Equipment status: Operational, Down, Maintenance
+- Fields: EQUIPMENT_ID, EQUIPMENT_NAME, FUNCTIONAL_LOCATION, EQUIPMENT_TYPE, STATUS, CRITICALITY
+
+**Loading Sample Data:**
+1. Go to **Relationships → Data Joins** tab
+2. Click **"Load Sample Data"** button
+3. Two bundles are created automatically
+4. Ready to create joins!
+
+**Example Join:**
+- Left: SAP Functional Locations
+- Right: SAP Equipment Assets
+- Condition: FLOC_ID = FUNCTIONAL_LOCATION
+- Result: Equipment inventory with location context
+
+See [/public/samples/joins/README.md](../public/samples/joins/README.md) for detailed dataset documentation.
+
+---
+
 ## Related Documentation
 
 - [JOIN_EXECUTION.md](./JOIN_EXECUTION.md) - Technical details on how joins work
 - [LINEAGE_API.md](./LINEAGE_API.md) - API reference for developers
 - [LINEAGE_FEATURE.md](./LINEAGE_FEATURE.md) - Feature overview and roadmap
+- [Sample Datasets README](../public/samples/joins/README.md) - Detailed SAP sample data documentation
