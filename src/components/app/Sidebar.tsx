@@ -160,8 +160,8 @@ export function Sidebar() {
           </TooltipTrigger>
           <TooltipContent side="right" sideOffset={8}>
             <div className="text-xs space-y-1">
-              <div className="font-semibold">Data Explorer v{VERSION}</div>
-              <div className="text-zinc-400">
+              <div className="font-semibold text-white">Data Explorer v{VERSION}</div>
+              <div className="text-zinc-300">
                 Built: {new Date(BUILD_DATE).toUTCString()}
               </div>
             </div>

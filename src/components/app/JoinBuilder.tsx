@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowRight, Plus, Trash2, AlertCircle, CheckCircle2, GitMerge } from 'lucide-react';
 import type { JoinDefinition, JoinCondition, JoinType, JoinOperator } from '@/types';
 
@@ -155,8 +154,8 @@ export function JoinBuilder() {
     leftBundleId && rightBundleId && conditions.length > 0 && conditions.every((c) => c.leftRoleId && c.rightRoleId);
 
   return (
-    <div className="h-full flex flex-col p-6">
-      <header className="mb-6">
+    <div className="flex flex-col h-full max-h-[90vh]">
+      <header className="flex-shrink-0 p-6 pb-4 border-b border-zinc-800">
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <GitMerge className="w-6 h-6 text-emerald-400" />
           Join Builder
@@ -164,11 +163,10 @@ export function JoinBuilder() {
         <p className="text-zinc-500 text-sm mt-1">Create semantic joins between data bundles</p>
       </header>
 
-      <div className="flex-1 overflow-hidden flex gap-6">
+      <div className="flex-1 overflow-y-auto p-6 pt-4">
+        <div className="flex gap-6">
         {/* Left panel - Configuration */}
-        <div className="flex-1">
-          <ScrollArea className="h-full pr-4">
-            <div className="space-y-6">
+        <div className="flex-1 space-y-6">
               {/* Join Name */}
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
@@ -374,8 +372,6 @@ export function JoinBuilder() {
                   </Button>
                 </div>
               )}
-            </div>
-          </ScrollArea>
         </div>
 
         {/* Right panel - Preview */}
@@ -433,6 +429,7 @@ export function JoinBuilder() {
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
     </div>
   );

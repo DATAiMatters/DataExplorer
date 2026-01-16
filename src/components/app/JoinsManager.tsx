@@ -60,7 +60,7 @@ export function JoinsManager() {
               New Join
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-6xl max-h-[90vh] p-0 bg-zinc-900 border-zinc-800">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-zinc-900 border-zinc-800">
             <JoinBuilder />
           </DialogContent>
         </Dialog>
