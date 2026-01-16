@@ -10,7 +10,7 @@ import { GitMerge, Trash2, Eye, AlertCircle, ArrowRight, Database, Download } fr
 import { JoinBuilder } from './JoinBuilder';
 import { parseCSV } from '@/lib/dataUtils';
 import { generateId } from '@/lib/dataUtils';
-import type { DataBundle } from '@/types';
+import type { DataBundle, JoinDefinition, VirtualBundle } from '@/types';
 
 export function JoinsManager() {
   const joins = useAppStore((s) => s.joins);
@@ -81,6 +81,7 @@ export function JoinsManager() {
       }
 
       // Create FLOC bundle
+      let flocBundleId: string;
       if (!existingFlocBundle) {
         const flocBundle: DataBundle = {
           id: generateId(),
@@ -106,9 +107,13 @@ export function JoinsManager() {
           updatedAt: new Date().toISOString(),
         };
         addBundle(flocBundle);
+        flocBundleId = flocBundle.id;
+      } else {
+        flocBundleId = existingFlocBundle.id;
       }
 
       // Create Equipment bundle
+      let equipBundleId: string;
       if (!existingEquipBundle) {
         const equipBundle: DataBundle = {
           id: generateId(),
@@ -136,19 +141,82 @@ export function JoinsManager() {
           updatedAt: new Date().toISOString(),
         };
         addBundle(equipBundle);
+        equipBundleId = equipBundle.id;
+      } else {
+        equipBundleId = existingEquipBundle.id;
       }
 
-      // Show success and offer to view bundles
-      const viewBundles = confirm(
+      // Ask if user wants to auto-create a join
+      const createJoin = confirm(
         'Sample data loaded successfully!\n\n' +
         '✓ SAP Functional Locations (30 locations)\n' +
         '✓ SAP Equipment Assets (43 equipment items)\n\n' +
-        'The bundles are now available in your Data Bundles list.\n\n' +
-        'Would you like to view them now, or stay here to create a join?'
+        'Would you like to automatically create a sample join between these datasets?\n\n' +
+        'Click OK to create join, or Cancel to create it manually.'
       );
 
-      if (viewBundles) {
-        setViewMode('bundles');
+      if (createJoin) {
+        // Create a sample join
+        const sampleJoin: JoinDefinition = {
+          id: generateId(),
+          name: 'Equipment by Location',
+          description: 'Inner join showing equipment installed at each functional location',
+          leftBundleId: flocBundleId,
+          rightBundleId: equipBundleId,
+          joinType: 'left',
+          conditions: [
+            {
+              leftRoleId: 'row_id',  // FLOC_ID
+              rightRoleId: 'text',   // FUNCTIONAL_LOCATION (first text field)
+              operator: '=',
+            },
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        const addJoin = useAppStore.getState().addJoin;
+        const addVirtualBundle = useAppStore.getState().addVirtualBundle;
+
+        addJoin(sampleJoin);
+
+        // Create virtual bundle
+        const virtualBundle: VirtualBundle = {
+          id: generateId(),
+          name: 'Equipment by Location (Sample)',
+          description: 'Virtual bundle showing equipment with their functional locations',
+          type: 'join',
+          sourceJoinIds: [sampleJoin.id],
+          schemaId: tabularSchema.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        addVirtualBundle(virtualBundle);
+
+        alert(
+          'Sample join created successfully!\n\n' +
+          'Join: "Equipment by Location"\n' +
+          'Type: Left Join (all locations, with equipment where available)\n' +
+          'Virtual Bundle: "Equipment by Location (Sample)"\n\n' +
+          'You can now explore the joined data or create additional joins.'
+        );
+      } else {
+        // Show info about creating joins manually
+        const viewBundles = confirm(
+          'Sample bundles are ready!\n\n' +
+          'The bundles are now in your Data Bundles list.\n\n' +
+          'To create a join:\n' +
+          '1. Click "New Join" button above\n' +
+          '2. Select both bundles\n' +
+          '3. Choose join type\n' +
+          '4. Map FLOC_ID to FUNCTIONAL_LOCATION\n\n' +
+          'Would you like to view the bundles now?'
+        );
+
+        if (viewBundles) {
+          setViewMode('bundles');
+        }
       }
 
     } catch (error) {
