@@ -6,19 +6,25 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { GitMerge, Trash2, Eye, AlertCircle, ArrowRight, Database } from 'lucide-react';
+import { GitMerge, Trash2, Eye, AlertCircle, ArrowRight, Database, Download } from 'lucide-react';
 import { JoinBuilder } from './JoinBuilder';
+import { parseCSV } from '@/lib/dataUtils';
+import { generateId } from '@/lib/dataUtils';
+import type { DataBundle } from '@/types';
 
 export function JoinsManager() {
   const joins = useAppStore((s) => s.joins);
   const virtualBundles = useAppStore((s) => s.virtualBundles);
   const bundles = useAppStore((s) => s.bundles);
+  const schemas = useAppStore((s) => s.schemas);
   const deleteJoin = useAppStore((s) => s.deleteJoin);
   const deleteVirtualBundle = useAppStore((s) => s.deleteVirtualBundle);
   const setSelectedBundle = useAppStore((s) => s.setSelectedBundle);
   const setViewMode = useAppStore((s) => s.setViewMode);
+  const addBundle = useAppStore((s) => s.addBundle);
 
   const [showBuilder, setShowBuilder] = useState(false);
+  const [loadingSamples, setLoadingSamples] = useState(false);
 
   const handleDeleteJoin = (joinId: string) => {
     const dependentVBundles = virtualBundles.filter((vb) => vb.sourceJoinIds.includes(joinId));
@@ -43,6 +49,105 @@ export function JoinsManager() {
     }
   };
 
+  const handleLoadSampleData = async () => {
+    setLoadingSamples(true);
+    try {
+      // Check if samples already loaded
+      const existingFlocBundle = bundles.find((b) => b.name === 'SAP Functional Locations');
+      const existingEquipBundle = bundles.find((b) => b.name === 'SAP Equipment Assets');
+
+      if (existingFlocBundle && existingEquipBundle) {
+        alert('Sample data already loaded! Check your Data Bundles.');
+        setLoadingSamples(false);
+        return;
+      }
+
+      // Load FLOC dataset
+      const flocResponse = await fetch('/samples/joins/fast-food-functional-locations.csv');
+      const flocText = await flocResponse.text();
+      const flocParsed = parseCSV(flocText);
+
+      // Load Equipment dataset
+      const equipResponse = await fetch('/samples/joins/fast-food-equipment-assets.csv');
+      const equipText = await equipResponse.text();
+      const equipParsed = parseCSV(equipText);
+
+      // Find tabular schema
+      const tabularSchema = schemas.find((s) => s.dataType === 'tabular');
+      if (!tabularSchema) {
+        alert('Tabular schema not found. Cannot load sample data.');
+        setLoadingSamples(false);
+        return;
+      }
+
+      // Create FLOC bundle
+      if (!existingFlocBundle) {
+        const flocBundle: DataBundle = {
+          id: generateId(),
+          name: 'SAP Functional Locations',
+          description: 'Functional Location hierarchy for FastBite restaurant chain (SAP PM data)',
+          schemaId: tabularSchema.id,
+          source: {
+            type: 'csv',
+            fileName: 'fast-food-functional-locations.csv',
+            rawData: flocText,
+            parsedData: flocParsed.data,
+            columns: flocParsed.columns,
+          },
+          mappings: [
+            { roleId: 'row_id', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
+            { roleId: 'category', sourceColumn: 'FLOC_TYPE', displayName: 'FLOC Type' },
+            { roleId: 'category', sourceColumn: 'REGION', displayName: 'Region' },
+            { roleId: 'category', sourceColumn: 'STATUS', displayName: 'Status' },
+            { roleId: 'text', sourceColumn: 'FLOC_NAME', displayName: 'FLOC Name' },
+            { roleId: 'text', sourceColumn: 'PARENT_FLOC', displayName: 'Parent FLOC' },
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        addBundle(flocBundle);
+      }
+
+      // Create Equipment bundle
+      if (!existingEquipBundle) {
+        const equipBundle: DataBundle = {
+          id: generateId(),
+          name: 'SAP Equipment Assets',
+          description: 'Commercial equipment assets for FastBite restaurants with functional location references (SAP PM data)',
+          schemaId: tabularSchema.id,
+          source: {
+            type: 'csv',
+            fileName: 'fast-food-equipment-assets.csv',
+            rawData: equipText,
+            parsedData: equipParsed.data,
+            columns: equipParsed.columns,
+          },
+          mappings: [
+            { roleId: 'row_id', sourceColumn: 'EQUIPMENT_ID', displayName: 'Equipment ID' },
+            { roleId: 'category', sourceColumn: 'EQUIPMENT_TYPE', displayName: 'Equipment Type' },
+            { roleId: 'category', sourceColumn: 'STATUS', displayName: 'Status' },
+            { roleId: 'category', sourceColumn: 'CRITICALITY', displayName: 'Criticality' },
+            { roleId: 'text', sourceColumn: 'EQUIPMENT_NAME', displayName: 'Equipment Name' },
+            { roleId: 'text', sourceColumn: 'FUNCTIONAL_LOCATION', displayName: 'Functional Location' },
+            { roleId: 'text', sourceColumn: 'MANUFACTURER', displayName: 'Manufacturer' },
+            { roleId: 'measure', sourceColumn: 'ACQUISITION_COST', displayName: 'Acquisition Cost' },
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        addBundle(equipBundle);
+      }
+
+      alert('Sample data loaded successfully! You can now create joins between "SAP Functional Locations" and "SAP Equipment Assets".');
+
+    } catch (error) {
+      console.error('Failed to load sample data:', error);
+      alert('Failed to load sample data. Please check the console for details.');
+    } finally {
+      setLoadingSamples(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <header className="flex items-center justify-between mb-6">
@@ -53,17 +158,28 @@ export function JoinsManager() {
           </h2>
           <p className="text-zinc-500 text-sm mt-1">Manage joins and virtual bundles</p>
         </div>
-        <Dialog open={showBuilder} onOpenChange={setShowBuilder}>
-          <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
-              <GitMerge className="w-4 h-4 mr-2" />
-              New Join
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-zinc-900 border-zinc-800">
-            <JoinBuilder />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="border-zinc-700"
+            onClick={handleLoadSampleData}
+            disabled={loadingSamples}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {loadingSamples ? 'Loading...' : 'Load Sample Data'}
+          </Button>
+          <Dialog open={showBuilder} onOpenChange={setShowBuilder}>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <GitMerge className="w-4 h-4 mr-2" />
+                New Join
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-zinc-900 border-zinc-800">
+              <JoinBuilder />
+            </DialogContent>
+          </Dialog>
+        </div>
       </header>
 
       {joins.length === 0 ? (
