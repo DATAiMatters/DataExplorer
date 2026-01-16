@@ -1,8 +1,13 @@
 # Semantic Join & Lineage Feature
 
-## Status: Foundation Complete ✅
+## Status: Phase 1-2 Complete ✅ | Phase 3 In Progress
 
 This document describes the semantic join and data lineage feature, its current implementation, and roadmap.
+
+**Quick Links:**
+- [User Guide](./USER_GUIDE_JOINS.md) - How to use joins (for end users)
+- [Technical Details](./JOIN_EXECUTION.md) - How joins work internally
+- [API Reference](./LINEAGE_API.md) - Developer API documentation
 
 ## What We Built (Phase 1 Foundation)
 
@@ -123,17 +128,19 @@ class LineageGraph {
 }
 ```
 
-## What's Next (Phase 2 - UI)
+## What We Built (Phase 2 - UI) ✅
 
 ### 1. Join Builder Interface
-**Location:** New component `src/components/app/JoinBuilder.tsx`
+**Location:** `src/components/app/JoinBuilder.tsx`
 
-**Features:**
-- Visual join builder (drag bundles onto canvas)
-- Select join type (inner/left/right/full)
-- Map semantic roles between bundles
-- Show live preview of join results
-- Validate join compatibility
+**Features Implemented:**
+- ✅ Visual join builder with bundle selection
+- ✅ All 4 join types (inner/left/right/full) with tooltips
+- ✅ Semantic role mapping with auto-suggestions
+- ✅ Test join feature with detailed statistics
+- ✅ Source column visibility in dropdowns
+- ✅ Real-time join execution and validation
+- ✅ Comprehensive error handling
 
 **Mock UI:**
 ```
@@ -186,17 +193,31 @@ class LineageGraph {
         [Sales Dashboard]
 ```
 
-### 3. Joins Management UI
-**Location:** Enhance `src/components/app/RelationshipManager.tsx`
+### 2. Joins Management UI ✅
+**Location:** `src/components/app/JoinsManager.tsx` + `RelationshipManager.tsx`
 
-**Features:**
-- List all joins
-- Edit/delete joins
-- Show join health metrics:
-  - Row counts
-  - Match rates
-  - Orphaned records
-- Quick actions: "View in Explorer", "Show Lineage"
+**Features Implemented:**
+- ✅ List all joins with visual flow diagrams
+- ✅ Delete joins with cascade warnings
+- ✅ Show join metadata and conditions
+- ✅ Display dependent virtual bundles
+- ✅ Quick actions: "View in Explorer"
+- ✅ Tabbed interface (Relationship Types | Data Joins)
+- ✅ Row count displays for source bundles
+
+### 3. Join Execution Engine ✅
+**Location:** `src/lib/joinUtils.ts` + `src/store/index.ts`
+
+**Features Implemented:**
+- ✅ In-memory join execution (no SQL)
+- ✅ All 4 join types with proper semantics
+- ✅ Nested loop algorithm (O(n×m))
+- ✅ Semantic role resolution to column names
+- ✅ Column prefixing to avoid conflicts
+- ✅ Comprehensive statistics tracking
+- ✅ Virtual bundle execution on-demand
+- ✅ Test join without creating
+- ✅ Validation and error handling
 
 ## What's Next (Phase 3 - Intelligence)
 

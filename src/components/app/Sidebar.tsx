@@ -1,11 +1,13 @@
 import { useAppStore } from '@/store';
 import { cn } from '@/lib/utils';
-import { Database, Layers, Download, Upload, GitBranch, Sparkles, BookOpen } from 'lucide-react';
+import { Database, Layers, Download, Upload, GitBranch, Sparkles, BookOpen, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VERSION, BUILD_DATE } from '@/version';
 import type { ViewMode } from '@/types';
+
+const GITHUB_REPO = 'https://github.com/DATAiMatters/DataExplorer';
 
 const navItems: { mode: ViewMode; icon: typeof Database; label: string }[] = [
   { mode: 'bundles', icon: Database, label: 'Data Bundles' },
@@ -158,11 +160,36 @@ export function Sidebar() {
               v{VERSION}
             </div>
           </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
-            <div className="text-xs space-y-1">
-              <div className="font-semibold text-white">Data Explorer v{VERSION}</div>
-              <div className="text-zinc-300">
-                Built: {new Date(BUILD_DATE).toUTCString()}
+          <TooltipContent side="right" sideOffset={8} className="max-w-xs">
+            <div className="text-xs space-y-3">
+              <div>
+                <div className="font-semibold text-white mb-1">Data Explorer v{VERSION}</div>
+                <div className="text-zinc-300">
+                  Built: {new Date(BUILD_DATE).toUTCString()}
+                </div>
+              </div>
+
+              <Separator className="bg-zinc-700" />
+
+              <div className="space-y-2">
+                <a
+                  href={GITHUB_REPO}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>View on GitHub</span>
+                </a>
+                <a
+                  href={`${GITHUB_REPO}/commits/main`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  <GitBranch className="w-3 h-3" />
+                  <span>Commit History</span>
+                </a>
               </div>
             </div>
           </TooltipContent>
