@@ -9,10 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Search, Edit2, Plus, RotateCcw, GitBranch, ChevronDown, ChevronRight } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, Edit2, Plus, RotateCcw, GitBranch, ChevronDown, ChevronRight, GitMerge } from 'lucide-react';
 import { getCategories, type RelationshipType } from '@/config/relationshipTypes';
+import { JoinsManager } from './JoinsManager';
 
 export function RelationshipManager() {
+  const [activeTab, setActiveTab] = useState('types');
   const relationshipTypeConfig = useAppStore((s) => s.relationshipTypeConfig);
   const addRelationshipType = useAppStore((s) => s.addRelationshipType);
   const updateRelationshipType = useAppStore((s) => s.updateRelationshipType);
@@ -81,99 +84,121 @@ export function RelationshipManager() {
           <div>
             <h1 className="text-2xl font-semibold text-zinc-100 flex items-center gap-2">
               <GitBranch className="w-6 h-6 text-emerald-400" />
-              Relationship Types
+              Relationships
             </h1>
             <p className="text-sm text-zinc-500 mt-1">
-              Configure relationship types and visual styling for network visualizations
+              Manage relationship types and data joins
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
-              <RotateCcw className="w-4 h-4" />
-              Reset to Defaults
-            </Button>
-            <AddRelationshipDialog onAdd={addRelationshipType} categories={categories} />
-          </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-3 mt-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <Input
-              placeholder="Search relationship types..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 bg-zinc-800 border-zinc-700"
-            />
-          </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-64 bg-zinc-800 border-zinc-700">
-              <SelectValue placeholder="Filter by category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+          <TabsList className="bg-zinc-800">
+            <TabsTrigger value="types" className="gap-2">
+              <GitBranch className="w-4 h-4" />
+              Relationship Types
+            </TabsTrigger>
+            <TabsTrigger value="joins" className="gap-2">
+              <GitMerge className="w-4 h-4" />
+              Data Joins
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="types" className="mt-0 flex-1 flex flex-col">
+            {/* Filters */}
+            <div className="flex gap-3 mt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Input
+                  placeholder="Search relationship types..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 bg-zinc-800 border-zinc-700"
+                />
+              </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-64 bg-zinc-800 border-zinc-700">
+                  <SelectValue placeholder="Filter by category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
+                  <RotateCcw className="w-4 h-4" />
+                  Reset to Defaults
+                </Button>
+                <AddRelationshipDialog onAdd={addRelationshipType} categories={categories} />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="joins" className="mt-4">
+            <JoinsManager />
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-6 space-y-4">
-          {Array.from(typesByCategory.entries()).map(([category, types]) => (
-            <Card key={category} className="bg-zinc-900 border-zinc-800">
-              <CardHeader className="pb-3 cursor-pointer" onClick={() => toggleCategory(category)}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {expandedCategories.has(category) ? (
-                      <ChevronDown className="w-4 h-4 text-zinc-400" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-zinc-400" />
-                    )}
-                    <CardTitle className="text-lg">{category}</CardTitle>
-                    <Badge variant="secondary" className="ml-2">
-                      {types.length}
-                    </Badge>
+      {/* Content - Only show for types tab */}
+      {activeTab === 'types' && (
+        <ScrollArea className="flex-1">
+          <div className="p-6 space-y-4">
+            {Array.from(typesByCategory.entries()).map(([category, types]) => (
+              <Card key={category} className="bg-zinc-900 border-zinc-800">
+                <CardHeader className="pb-3 cursor-pointer" onClick={() => toggleCategory(category)}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {expandedCategories.has(category) ? (
+                        <ChevronDown className="w-4 h-4 text-zinc-400" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-zinc-400" />
+                      )}
+                      <CardTitle className="text-lg">{category}</CardTitle>
+                      <Badge variant="secondary" className="ml-2">
+                        {types.length}
+                      </Badge>
+                    </div>
+                    <div
+                      className="w-4 h-4 rounded-full border-2"
+                      style={{
+                        backgroundColor: relationshipTypeConfig.categoryColors[category] || '#6b7280',
+                        borderColor: relationshipTypeConfig.categoryColors[category] || '#6b7280',
+                      }}
+                    />
                   </div>
-                  <div
-                    className="w-4 h-4 rounded-full border-2"
-                    style={{
-                      backgroundColor: relationshipTypeConfig.categoryColors[category] || '#6b7280',
-                      borderColor: relationshipTypeConfig.categoryColors[category] || '#6b7280',
-                    }}
-                  />
-                </div>
-              </CardHeader>
+                </CardHeader>
 
-              {expandedCategories.has(category) && (
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    {types.map((type) => (
-                      <RelationshipTypeCard
-                        key={type.name}
-                        type={type}
-                        onUpdate={updateRelationshipType}
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-          ))}
+                {expandedCategories.has(category) && (
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      {types.map((type) => (
+                        <RelationshipTypeCard
+                          key={type.name}
+                          type={type}
+                          onUpdate={updateRelationshipType}
+                        />
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            ))}
 
-          {filteredTypes.length === 0 && (
-            <div className="text-center py-12 text-zinc-500">
-              No relationship types match your search
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            {filteredTypes.length === 0 && (
+              <div className="text-center py-12 text-zinc-500">
+                No relationship types match your search
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 }
