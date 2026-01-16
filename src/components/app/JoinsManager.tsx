@@ -138,7 +138,18 @@ export function JoinsManager() {
         addBundle(equipBundle);
       }
 
-      alert('Sample data loaded successfully! You can now create joins between "SAP Functional Locations" and "SAP Equipment Assets".');
+      // Show success and offer to view bundles
+      const viewBundles = confirm(
+        'Sample data loaded successfully!\n\n' +
+        '✓ SAP Functional Locations (30 locations)\n' +
+        '✓ SAP Equipment Assets (43 equipment items)\n\n' +
+        'The bundles are now available in your Data Bundles list.\n\n' +
+        'Would you like to view them now, or stay here to create a join?'
+      );
+
+      if (viewBundles) {
+        setViewMode('bundles');
+      }
 
     } catch (error) {
       console.error('Failed to load sample data:', error);
@@ -192,10 +203,19 @@ export function JoinsManager() {
             <p className="text-zinc-500 text-sm mb-4">
               Create your first join to combine data from multiple bundles
             </p>
-            <Button onClick={() => setShowBuilder(true)} className="bg-emerald-600 hover:bg-emerald-700">
-              <GitMerge className="w-4 h-4 mr-2" />
-              Create Join
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button onClick={() => setShowBuilder(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                <GitMerge className="w-4 h-4 mr-2" />
+                Create Join
+              </Button>
+              <Button onClick={handleLoadSampleData} variant="outline" className="border-zinc-700" disabled={loadingSamples}>
+                <Download className="w-4 h-4 mr-2" />
+                {loadingSamples ? 'Loading...' : 'Try with Sample Data'}
+              </Button>
+            </div>
+            <p className="text-zinc-600 text-xs mt-4">
+              Sample data includes SAP Functional Locations and Equipment Assets
+            </p>
           </div>
         </div>
       ) : (

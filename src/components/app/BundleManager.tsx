@@ -159,6 +159,7 @@ export function BundleManager() {
             {bundles.map((bundle) => {
               const schema = schemas.find((s) => s.id === bundle.schemaId);
               const Icon = schema ? dataTypeIcons[schema.dataType] : FileText;
+              const isSampleBundle = bundle.name === 'SAP Functional Locations' || bundle.name === 'SAP Equipment Assets';
 
               return (
                 <Card key={bundle.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
@@ -168,8 +169,15 @@ export function BundleManager() {
                         <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
                           <Icon className="w-5 h-5 text-emerald-400" />
                         </div>
-                        <div>
-                          <CardTitle className="text-base">{bundle.name}</CardTitle>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-base">{bundle.name}</CardTitle>
+                            {isSampleBundle && (
+                              <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs">
+                                SAMPLE
+                              </Badge>
+                            )}
+                          </div>
                           <CardDescription className="text-xs">
                             {schema?.name || 'Unknown schema'}
                           </CardDescription>
