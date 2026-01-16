@@ -84,6 +84,18 @@ interface AppStore {
   getLineageGraph: () => LineageGraph;
   getUpstreamBundles: (bundleId: string) => DataBundle[];
   getDownstreamBundles: (bundleId: string) => (DataBundle | VirtualBundle)[];
+  executeVirtualBundle: (virtualBundleId: string) => {
+    data: Record<string, unknown>[];
+    leftColumns: string[];
+    rightColumns: string[];
+    stats: {
+      leftRows: number;
+      rightRows: number;
+      resultRows: number;
+      matchedLeftRows: number;
+      matchedRightRows: number;
+    };
+  };
 
   // AI-powered features (future Cognee integration)
   suggestJoins: () => Promise<JoinSuggestion[]>;
@@ -345,6 +357,44 @@ export const useAppStore = create<AppStore>()(
             return state.virtualBundles.find((vb) => vb.id === node.bundleId);
           })
           .filter((b): b is DataBundle | VirtualBundle => b !== undefined);
+      },
+
+      // Execute a join and return the result data
+      executeVirtualBundle: (virtualBundleId) => {
+        const state = get();
+        const vBundle = state.virtualBundles.find((vb) => vb.id === virtualBundleId);
+
+        if (!vBundle) {
+          throw new Error(`Virtual bundle ${virtualBundleId} not found`);
+        }
+
+        if (vBundle.type !== 'join') {
+          throw new Error(`Virtual bundle type "${vBundle.type}" not yet supported`);
+        }
+
+        if (vBundle.sourceJoinIds.length === 0) {
+          throw new Error('Virtual bundle has no source joins');
+        }
+
+        // For now, execute the first join
+        // TODO: Support multiple chained joins
+        const joinId = vBundle.sourceJoinIds[0];
+        const join = state.joins.find((j) => j.id === joinId);
+
+        if (!join) {
+          throw new Error(`Join ${joinId} not found`);
+        }
+
+        const leftBundle = state.bundles.find((b) => b.id === join.leftBundleId);
+        const rightBundle = state.bundles.find((b) => b.id === join.rightBundleId);
+
+        if (!leftBundle || !rightBundle) {
+          throw new Error('Source bundles not found');
+        }
+
+        // Import join execution utility
+        const { executeJoin } = require('@/lib/joinUtils');
+        return executeJoin(leftBundle, rightBundle, join);
       },
 
       // AI-powered join suggestions (placeholder for future Cognee integration)
