@@ -56,6 +56,20 @@ export function JoinsManager() {
       const existingFlocBundle = bundles.find((b) => b.name === 'SAP Functional Locations');
       const existingEquipBundle = bundles.find((b) => b.name === 'SAP Equipment Assets');
 
+      // Check if existing equipment bundle needs FLOC_ID field added
+      if (existingEquipBundle) {
+        const hasFlocIdMapping = existingEquipBundle.mappings.some(m => m.sourceColumn === 'FLOC_ID');
+        if (!hasFlocIdMapping && existingEquipBundle.source.columns.includes('FLOC_ID')) {
+          // Update the equipment bundle to add FLOC_ID mapping
+          const updatedMappings = [
+            ...existingEquipBundle.mappings,
+            { roleId: 'text', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
+          ];
+          updateBundle(existingEquipBundle.id, { mappings: updatedMappings });
+          alert('Updated SAP Equipment Assets with FLOC_ID field mapping!');
+        }
+      }
+
       if (existingFlocBundle && existingEquipBundle) {
         alert('Sample data already loaded! Check your Datasets.');
         setLoadingSamples(false);
