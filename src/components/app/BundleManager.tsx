@@ -41,6 +41,21 @@ export function BundleManager() {
   const [reloadingBundleId, setReloadingBundleId] = useState<string | null>(null);
   const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
 
+  // Auto-fix missing FLOC_ID mapping in equipment dataset
+  useEffect(() => {
+    const equipBundle = bundles.find((b) => b.name === 'SAP Equipment Assets');
+    if (equipBundle) {
+      const hasFlocIdMapping = equipBundle.mappings.some(m => m.sourceColumn === 'FLOC_ID');
+      if (!hasFlocIdMapping && equipBundle.source.columns.includes('FLOC_ID')) {
+        const updatedMappings = [
+          ...equipBundle.mappings,
+          { roleId: 'text', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
+        ];
+        updateBundle(equipBundle.id, { mappings: updatedMappings });
+      }
+    }
+  }, [bundles, updateBundle]);
+
   // Auto-open dialog when coming from schema manager
   useEffect(() => {
     if (preselectedSchemaId) {
