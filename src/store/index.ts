@@ -18,6 +18,7 @@ import {
   type RelationshipType,
 } from '@/config/relationshipTypes';
 import { LineageGraph } from '@/lib/lineageGraph';
+import { executeJoin } from '@/lib/joinUtils';
 
 interface AppStore {
   // State
@@ -392,8 +393,7 @@ export const useAppStore = create<AppStore>()(
           throw new Error('Source bundles not found');
         }
 
-        // Import join execution utility
-        const { executeJoin } = require('@/lib/joinUtils');
+        // Execute join using imported utility
         return executeJoin(leftBundle, rightBundle, join);
       },
 

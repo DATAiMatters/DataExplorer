@@ -37,15 +37,15 @@ export class LineageGraph {
   ): LineageGraph {
     const lineage = new LineageGraph();
 
-    // Add bundle nodes
+    // Add schema nodes FIRST (before bundle→schema edges)
+    schemas.forEach((schema) => {
+      lineage.addSchemaNode(schema);
+    });
+
+    // Add bundle nodes and their schema edges
     bundles.forEach((bundle) => {
       lineage.addBundleNode(bundle);
       lineage.addBundleToSchemaEdge(bundle);
-    });
-
-    // Add schema nodes
-    schemas.forEach((schema) => {
-      lineage.addSchemaNode(schema);
     });
 
     // Add join relationships
