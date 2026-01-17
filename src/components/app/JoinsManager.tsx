@@ -22,6 +22,7 @@ export function JoinsManager() {
   const setSelectedBundle = useAppStore((s) => s.setSelectedBundle);
   const setViewMode = useAppStore((s) => s.setViewMode);
   const addBundle = useAppStore((s) => s.addBundle);
+  const updateBundle = useAppStore((s) => s.updateBundle);
 
   const [showBuilder, setShowBuilder] = useState(false);
   const [loadingSamples, setLoadingSamples] = useState(false);
