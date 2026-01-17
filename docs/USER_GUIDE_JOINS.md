@@ -380,9 +380,29 @@ See [/public/samples/joins/README.md](../public/samples/joins/README.md) for det
 
 ---
 
+## Visualizing Data Lineage
+
+After creating joins, you can visualize the relationships between your bundles:
+
+1. Go to **Relationships → Lineage Graph** tab
+2. See an interactive graph showing:
+   - Your data bundles (green nodes)
+   - Virtual bundles from joins (violet nodes)
+   - Schemas used (amber nodes)
+   - Connections between them
+
+**Features:**
+- **Interactive:** Drag nodes, zoom, pan
+- **Hover Details:** See metadata for each node
+- **Physics Controls:** Adjust spacing and clustering
+- **Legend:** Understand node and edge types
+
+For more details, see the [Lineage Graph Feature Guide](./LINEAGE_GRAPH_FEATURE.md).
+
 ## Related Documentation
 
 - [JOIN_EXECUTION.md](./JOIN_EXECUTION.md) - Technical details on how joins work
 - [LINEAGE_API.md](./LINEAGE_API.md) - API reference for developers
 - [LINEAGE_FEATURE.md](./LINEAGE_FEATURE.md) - Feature overview and roadmap
+- [LINEAGE_GRAPH_FEATURE.md](./LINEAGE_GRAPH_FEATURE.md) - Lineage graph visualization guide
 - [Sample Datasets README](../public/samples/joins/README.md) - Detailed SAP sample data documentation

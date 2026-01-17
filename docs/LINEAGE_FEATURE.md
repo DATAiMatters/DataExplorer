@@ -231,6 +231,26 @@ class LineageGraph {
 - ✅ Comprehensive documentation with use cases
 - ✅ Realistic SAP PM data structure
 
+### 5. Lineage Graph Visualization ✅
+**Location:** `src/components/app/visualizations/LineageGraphExplorer.tsx`
+
+**Features Implemented:**
+- ✅ Interactive force-directed graph using D3.js
+- ✅ Visual representation of data lineage
+- ✅ Three node types: Bundles (green), Virtual Bundles (violet), Schemas (amber)
+- ✅ Three edge types: Join (blue), Derived From (pink), Uses Schema (gray)
+- ✅ Interactive controls:
+  - Zoom in/out and pan
+  - Drag nodes to reposition
+  - Adjustable physics simulation (link strength, repulsion)
+- ✅ Hover tooltips with node metadata
+- ✅ Legend showing node and edge types
+- ✅ Statistics panel (node counts, edge counts)
+- ✅ Integrated in Relationships view as "Lineage Graph" tab
+- ✅ Empty state with helpful onboarding message
+
+**Documentation:** See [LINEAGE_GRAPH_FEATURE.md](./LINEAGE_GRAPH_FEATURE.md) for detailed usage guide
+
 ## What's Next (Phase 3 - Intelligence)
 
 ### 1. AI-Powered Join Suggestions
