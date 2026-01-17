@@ -133,7 +133,7 @@ export function JoinsManager() {
             { roleId: 'category', sourceColumn: 'STATUS', displayName: 'Status' },
             { roleId: 'category', sourceColumn: 'CRITICALITY', displayName: 'Criticality' },
             { roleId: 'text', sourceColumn: 'EQUIPMENT_NAME', displayName: 'Equipment Name' },
-            { roleId: 'text', sourceColumn: 'FUNCTIONAL_LOCATION', displayName: 'Functional Location' },
+            { roleId: 'text', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
             { roleId: 'text', sourceColumn: 'MANUFACTURER', displayName: 'Manufacturer' },
             { roleId: 'measure', sourceColumn: 'ACQUISITION_COST', displayName: 'Acquisition Cost' },
           ],
@@ -160,14 +160,14 @@ export function JoinsManager() {
         const sampleJoin: JoinDefinition = {
           id: generateId(),
           name: 'Equipment by Location',
-          description: 'Inner join showing equipment installed at each functional location',
+          description: 'Left join showing equipment installed at each functional location',
           leftBundleId: flocBundleId,
           rightBundleId: equipBundleId,
           joinType: 'left',
           conditions: [
             {
-              leftRoleId: 'row_id',  // FLOC_ID
-              rightRoleId: 'text',   // FUNCTIONAL_LOCATION (first text field)
+              leftRoleId: 'row_id',  // FLOC_ID from Functional Locations
+              rightRoleId: 'text',   // FLOC_ID from Equipment (first text field)
               operator: '=',
             },
           ],
@@ -183,8 +183,8 @@ export function JoinsManager() {
         // Create virtual bundle
         const virtualBundle: VirtualBundle = {
           id: generateId(),
-          name: 'Equipment by Location (Sample)',
-          description: 'Virtual bundle showing equipment with their functional locations',
+          name: 'Equipment by Location (Derived)',
+          description: 'Derived dataset showing equipment with their functional locations',
           type: 'join',
           sourceJoinIds: [sampleJoin.id],
           schemaId: tabularSchema.id,
@@ -198,7 +198,7 @@ export function JoinsManager() {
           'Sample join created successfully!\n\n' +
           'Join: "Equipment by Location"\n' +
           'Type: Left Join (all locations, with equipment where available)\n' +
-          'Virtual Bundle: "Equipment by Location (Sample)"\n\n' +
+          'Derived Dataset: "Equipment by Location (Derived)"\n\n' +
           'You can now explore the joined data or create additional joins.'
         );
       } else {
@@ -210,7 +210,7 @@ export function JoinsManager() {
           '1. Click "New Join" button above\n' +
           '2. Select both bundles\n' +
           '3. Choose join type\n' +
-          '4. Map FLOC_ID to FUNCTIONAL_LOCATION\n\n' +
+          '4. Map FLOC_ID to FLOC_ID\n\n' +
           'Would you like to view the bundles now?'
         );
 

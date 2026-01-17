@@ -16,6 +16,7 @@ interface SimulationLink extends d3.SimulationLinkDatum<SimulationNode> {
 
 export function LineageGraphExplorer() {
   const svgRef = useRef<SVGSVGElement>(null);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [hoveredNode, setHoveredNode] = useState<LineageNode | null>(null);
   const [linkStrength, setLinkStrength] = useState(0.3);
   const [chargeStrength, setChargeStrength] = useState(-500);
@@ -111,6 +112,8 @@ export function LineageGraphExplorer() {
         g.attr('transform', event.transform);
       });
 
+    // Store zoom behavior for button controls
+    zoomBehaviorRef.current = zoom;
     svg.call(zoom);
 
     // Add arrow markers for directed edges
@@ -234,9 +237,9 @@ export function LineageGraphExplorer() {
   }, [lineageData, linkStrength, chargeStrength, nodeTypeColors, edgeTypeColors]);
 
   const handleZoom = (direction: 'in' | 'out' | 'reset') => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !zoomBehaviorRef.current) return;
     const svg = d3.select(svgRef.current);
-    const zoom = d3.zoom<SVGSVGElement, unknown>();
+    const zoom = zoomBehaviorRef.current;
 
     if (direction === 'reset') {
       svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
