@@ -68,7 +68,11 @@ export function executeJoin(
 
     case 'left':
       result = executeLeftJoin(leftData, rightData, conditionMappings, rightColumns);
-      matchedLeftRows = leftData.length;
+      // Only count left rows that actually matched with right rows
+      matchedLeftRows = countUniqueMatchedRows(
+        result.filter((row) => !isNullRow(row, rightColumns)),
+        leftColumns
+      );
       matchedRightRows = countUniqueMatchedRows(
         result.filter((row) => !isNullRow(row, rightColumns)),
         rightColumns
@@ -81,7 +85,11 @@ export function executeJoin(
         result.filter((row) => !isNullRow(row, leftColumns)),
         leftColumns
       );
-      matchedRightRows = rightData.length;
+      // Only count right rows that actually matched with left rows
+      matchedRightRows = countUniqueMatchedRows(
+        result.filter((row) => !isNullRow(row, leftColumns)),
+        rightColumns
+      );
       break;
 
     case 'full':
@@ -315,7 +323,8 @@ function countUniqueMatchedRows(rows: ParsedRow[], columns: string[]): number {
   const uniqueRows = new Set<string>();
 
   for (const row of rows) {
-    const rowKey = columns.map((col) => row[`left_${col}`] || row[`right_${col}`]).join('|');
+    // Use nullish coalescing to preserve 0, "", false as legitimate values
+    const rowKey = columns.map((col) => row[`left_${col}`] ?? row[`right_${col}`]).join('|');
     uniqueRows.add(rowKey);
   }
 
