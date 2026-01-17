@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Interactive Lineage Graph Visualization** - New D3.js-powered force-directed graph
-  - Visual representation of data lineage (bundles, joins, schemas)
+  - Visual representation of data lineage (datasets, joins, schemas)
   - Interactive controls: zoom, pan, drag nodes
   - Adjustable physics simulation parameters
   - Hover tooltips with node metadata
@@ -20,13 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `LINEAGE_FEATURE.md` and `USER_GUIDE_JOINS.md`
 
 ### Fixed
-- **CRITICAL:** Virtual bundle execution crash - replaced `require()` with ES6 `import`
-- **CRITICAL:** Missing bundle→schema edges in lineage graph - reordered node creation
+- **CRITICAL:** Virtual dataset execution crash - replaced `require()` with ES6 `import`
+- **CRITICAL:** Missing dataset→schema edges in lineage graph - reordered node creation
 - **IMPORTANT:** Misleading join statistics for left/right joins - now counts actual matches
 - **IMPORTANT:** Nullish value handling in joins - changed `||` to `??` for correct zero/empty handling
 
 ### Changed
-- Schema nodes now created before bundle→schema edges in lineage graph
+- Schema nodes now created before dataset→schema edges in lineage graph
 - Join statistics now accurately reflect match rates for all join types
 
 ## [0.4.0] - 2026-01-16
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - "Load Sample Data" button in Data Joins tab
   - Auto-create join option for sample data
   - Comprehensive sample data documentation
-- Sample bundles identified with blue "SAMPLE" badge
+- Sample datasets identified with blue "SAMPLE" badge
 
 ### Fixed
 - Sample data visibility improvements
@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Complete Join & Lineage feature (Phase 1-2)
   - Join Builder with visual interface
   - Join execution engine (inner, left, right, full outer)
-  - Virtual bundles (on-demand join execution)
+  - Derived datasets (on-demand join execution)
   - Lineage graph infrastructure (graphology-based)
   - JoinsManager for managing join definitions
 - Comprehensive join documentation
@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core data exploration features
 - Hierarchical data visualization
 - Tabular data profiling
-- Bundle management
+- Dataset management
 - Schema system
 - Dark theme UI
 

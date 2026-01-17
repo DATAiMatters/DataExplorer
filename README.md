@@ -37,11 +37,11 @@ An immersive data visualization tool for exploring hierarchical, tabular, and ne
 - **Custom Display Names** for user-friendly labels
 - Create custom schemas or modify the defaults
 
-### 📦 Data Bundle Management
+### 📦 Dataset Management
 
 - Upload CSV or JSON files
 - Auto-detect columns and suggest mappings
-- Reload bundles with new data (preserves mappings)
+- Reload datasets with new data (preserves mappings)
 - Export/import configuration
 - Local storage persistence
 
@@ -93,7 +93,7 @@ data-explorer/
 │   │   ├── app/                    # Application components
 │   │   │   ├── AppLayout.tsx       # Main layout wrapper
 │   │   │   ├── Sidebar.tsx         # Navigation sidebar
-│   │   │   ├── BundleManager.tsx   # Data bundle CRUD
+│   │   │   ├── BundleManager.tsx   # Dataset CRUD
 │   │   │   ├── SchemaManager.tsx   # Schema editing
 │   │   │   ├── Explorer.tsx        # Visualization router
 │   │   │   └── visualizations/
@@ -125,17 +125,17 @@ data-explorer/
 
 ## Usage
 
-### 1. Create a Data Bundle
+### 1. Create a Dataset
 
-1. Click **"New Bundle"** in the Data Bundles view
+1. Click **"New Dataset"** in the Datasets view
 2. Upload a CSV or JSON file
 3. Enter a name and select a schema type (Hierarchy, Tabular, or Network)
 4. Map your columns to semantic roles
-5. Click **"Create Bundle"**
+5. Click **"Create Dataset"**
 
 ### 2. Explore Your Data
 
-1. Click **"Explore"** on any bundle card
+1. Click **"Explore"** on any dataset card
 2. Use the visualization controls:
    - **Hierarchy**: Toggle between Treemap/Tree views, switch orientation
    - **Tabular**: Search and sort columns, view statistics, click "View Data" to see raw data in sortable grid
@@ -145,7 +145,7 @@ data-explorer/
 
 ### 3. Reload Data
 
-- Click the refresh icon on a bundle card, or
+- Click the refresh icon on a dataset card, or
 - Click **"Reload Data"** in the Explorer header
 - Upload a new file - mappings are preserved for matching columns
 

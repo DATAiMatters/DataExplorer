@@ -117,14 +117,14 @@ This dataset includes real-world scenarios:
 ### Option 1: Via UI (Recommended)
 1. Navigate to **Relationships → Data Joins** tab
 2. Click **"Load Sample Data"** button
-3. Two bundles will be created automatically:
+3. Two datasets will be created automatically:
    - "SAP Functional Locations"
    - "SAP Equipment Assets"
 
 ### Option 2: Manual Upload
 1. Download both CSV files
-2. Navigate to **Data Bundles**
-3. Click **"New Bundle"** for each file
+2. Navigate to **Datasets**
+3. Click **"New Dataset"** for each file
 4. Select "Tabular" schema
 5. Map columns appropriately
 
