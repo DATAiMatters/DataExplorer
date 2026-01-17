@@ -10,9 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Edit2, Plus, RotateCcw, GitBranch, ChevronDown, ChevronRight, GitMerge } from 'lucide-react';
+import { Search, Edit2, Plus, RotateCcw, GitBranch, ChevronDown, ChevronRight, GitMerge, Network } from 'lucide-react';
 import { getCategories, type RelationshipType } from '@/config/relationshipTypes';
 import { JoinsManager } from './JoinsManager';
+import { LineageGraphExplorer } from './visualizations/LineageGraphExplorer';
 
 export function RelationshipManager() {
   const [activeTab, setActiveTab] = useState('types');
@@ -103,6 +104,10 @@ export function RelationshipManager() {
               <GitMerge className="w-4 h-4" />
               Data Joins
             </TabsTrigger>
+            <TabsTrigger value="lineage" className="gap-2">
+              <Network className="w-4 h-4" />
+              Lineage Graph
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="types" className="mt-0 flex-1 flex flex-col">
@@ -142,6 +147,10 @@ export function RelationshipManager() {
 
           <TabsContent value="joins" className="mt-4">
             <JoinsManager />
+          </TabsContent>
+
+          <TabsContent value="lineage" className="mt-0 h-[calc(100vh-240px)]">
+            <LineageGraphExplorer />
           </TabsContent>
         </Tabs>
       </div>
