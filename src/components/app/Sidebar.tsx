@@ -10,7 +10,7 @@ import type { ViewMode } from '@/types';
 const GITHUB_REPO = 'https://github.com/DATAiMatters/DataExplorer';
 
 const navItems: { mode: ViewMode; icon: typeof Database; label: string }[] = [
-  { mode: 'bundles', icon: Database, label: 'Data Bundles' },
+  { mode: 'bundles', icon: Database, label: 'Datasets' },
   { mode: 'schemas', icon: Layers, label: 'Semantic Schemas' },
   { mode: 'relationships', icon: GitBranch, label: 'Relationships' },
   { mode: 'journal', icon: BookOpen, label: 'Journal' },

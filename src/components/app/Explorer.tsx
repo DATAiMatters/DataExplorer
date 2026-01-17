@@ -214,10 +214,10 @@ export function Explorer() {
           size="sm"
           onClick={() => setViewMode('bundles')}
           className="border-zinc-700 hover:bg-zinc-800"
-          title="Create a new bundle"
+          title="Create a new dataset"
         >
           <Plus className="w-4 h-4 mr-2" />
-          New Bundle
+          New Dataset
         </Button>
       </header>
 

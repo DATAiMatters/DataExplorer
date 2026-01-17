@@ -225,15 +225,15 @@ export function JoinBuilder() {
               {/* Bundle Selection */}
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
-                  <CardTitle className="text-base">Select Bundles</CardTitle>
-                  <CardDescription>Choose the two bundles to join</CardDescription>
+                  <CardTitle className="text-base">Select Datasets</CardTitle>
+                  <CardDescription>Choose the two datasets to join</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label>Left Bundle</Label>
+                    <Label>Left Dataset</Label>
                     <Select value={leftBundleId} onValueChange={setLeftBundleId}>
                       <SelectTrigger className="bg-zinc-800 border-zinc-700 mt-2">
-                        <SelectValue placeholder="Select bundle..." />
+                        <SelectValue placeholder="Select dataset..." />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-800 border-zinc-700">
                         {bundles.map((bundle) => (
@@ -250,10 +250,10 @@ export function JoinBuilder() {
                   </div>
 
                   <div>
-                    <Label>Right Bundle</Label>
+                    <Label>Right Dataset</Label>
                     <Select value={rightBundleId} onValueChange={setRightBundleId}>
                       <SelectTrigger className="bg-zinc-800 border-zinc-700 mt-2">
-                        <SelectValue placeholder="Select bundle..." />
+                        <SelectValue placeholder="Select dataset..." />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-800 border-zinc-700">
                         {bundles.map((bundle) => (
@@ -304,10 +304,10 @@ export function JoinBuilder() {
                       </SelectContent>
                     </Select>
                     <div className="mt-3 text-xs text-zinc-500">
-                      {joinType === 'inner' && '→ Only matching rows from both bundles'}
+                      {joinType === 'inner' && '→ Only matching rows from both datasets'}
                       {joinType === 'left' && `→ All rows from ${leftBundle?.name}, nulls where no match`}
                       {joinType === 'right' && `→ All rows from ${rightBundle?.name}, nulls where no match`}
-                      {joinType === 'full' && '→ All rows from both bundles, nulls where no match'}
+                      {joinType === 'full' && '→ All rows from both datasets, nulls where no match'}
                     </div>
                   </CardContent>
                 </Card>

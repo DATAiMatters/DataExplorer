@@ -30,7 +30,7 @@ export function JoinsManager() {
     const dependentVBundles = virtualBundles.filter((vb) => vb.sourceJoinIds.includes(joinId));
 
     if (dependentVBundles.length > 0) {
-      const message = `This join is used by ${dependentVBundles.length} virtual bundle(s). Deleting it will also delete:\n\n${dependentVBundles.map((vb) => `- ${vb.name}`).join('\n')}\n\nContinue?`;
+      const message = `This join is used by ${dependentVBundles.length} derived dataset(s). Deleting it will also delete:\n\n${dependentVBundles.map((vb) => `- ${vb.name}`).join('\n')}\n\nContinue?`;
       if (!confirm(message)) return;
     }
 
@@ -57,7 +57,7 @@ export function JoinsManager() {
       const existingEquipBundle = bundles.find((b) => b.name === 'SAP Equipment Assets');
 
       if (existingFlocBundle && existingEquipBundle) {
-        alert('Sample data already loaded! Check your Data Bundles.');
+        alert('Sample data already loaded! Check your Datasets.');
         setLoadingSamples(false);
         return;
       }
@@ -203,18 +203,18 @@ export function JoinsManager() {
         );
       } else {
         // Show info about creating joins manually
-        const viewBundles = confirm(
-          'Sample bundles are ready!\n\n' +
-          'The bundles are now in your Data Bundles list.\n\n' +
+        const viewDatasets = confirm(
+          'Sample datasets are ready!\n\n' +
+          'The datasets are now in your Datasets list.\n\n' +
           'To create a join:\n' +
           '1. Click "New Join" button above\n' +
-          '2. Select both bundles\n' +
+          '2. Select both datasets\n' +
           '3. Choose join type\n' +
           '4. Map FLOC_ID to FLOC_ID\n\n' +
-          'Would you like to view the bundles now?'
+          'Would you like to view the datasets now?'
         );
 
-        if (viewBundles) {
+        if (viewDatasets) {
           setViewMode('bundles');
         }
       }
@@ -235,7 +235,7 @@ export function JoinsManager() {
             <GitMerge className="w-5 h-5 text-emerald-400" />
             Data Joins
           </h2>
-          <p className="text-zinc-500 text-sm mt-1">Manage joins and virtual bundles</p>
+          <p className="text-zinc-500 text-sm mt-1">Manage joins and derived datasets</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -367,10 +367,10 @@ export function JoinsManager() {
                       </div>
                     </div>
 
-                    {/* Virtual Bundles */}
+                    {/* Derived Datasets */}
                     {dependentVBundles.length > 0 && (
                       <div>
-                        <div className="text-xs text-zinc-500 mb-2">Virtual Bundles:</div>
+                        <div className="text-xs text-zinc-500 mb-2">Derived Datasets:</div>
                         <div className="space-y-2">
                           {dependentVBundles.map((vb) => (
                             <div
@@ -400,7 +400,7 @@ export function JoinsManager() {
                                   variant="ghost"
                                   className="hover:text-red-400"
                                   onClick={() => {
-                                    if (confirm(`Delete virtual bundle "${vb.name}"?`)) {
+                                    if (confirm(`Delete derived dataset "${vb.name}"?`)) {
                                       deleteVirtualBundle(vb.id);
                                     }
                                   }}
@@ -420,10 +420,10 @@ export function JoinsManager() {
                         <AlertCircle className="w-4 h-4 text-red-400" />
                         <AlertDescription className="text-red-200 text-sm">
                           {!leftBundle && !rightBundle
-                            ? 'Both source bundles are missing'
+                            ? 'Both source datasets are missing'
                             : !leftBundle
-                            ? 'Left bundle is missing'
-                            : 'Right bundle is missing'}
+                            ? 'Left dataset is missing'
+                            : 'Right dataset is missing'}
                         </AlertDescription>
                       </Alert>
                     )}

@@ -107,7 +107,7 @@ export function BundleManager() {
     <div className="h-full flex flex-col p-6">
       <header className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Data Bundles</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Datasets</h1>
           <p className="text-zinc-500 text-sm mt-1">
             Upload datasets and map columns to semantic roles
           </p>
@@ -116,12 +116,12 @@ export function BundleManager() {
           <DialogTrigger asChild>
             <Button className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="w-4 h-4 mr-2" />
-              New Bundle
+              New Dataset
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col bg-zinc-900 border-zinc-800">
             <DialogHeader>
-              <DialogTitle>Create Data Bundle</DialogTitle>
+              <DialogTitle>Create Dataset</DialogTitle>
               <DialogDescription>
                 Upload a file and map its columns to a semantic schema
               </DialogDescription>
@@ -149,9 +149,9 @@ export function BundleManager() {
             <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
               <Upload className="w-8 h-8 text-zinc-600" />
             </div>
-            <h3 className="text-lg font-medium text-zinc-300">No data bundles yet</h3>
+            <h3 className="text-lg font-medium text-zinc-300">No datasets yet</h3>
             <p className="text-zinc-500 text-sm mt-1 max-w-sm">
-              Create your first bundle by uploading a CSV or JSON file
+              Create your first dataset by uploading a CSV or JSON file
             </p>
           </div>
         ) : (
@@ -243,7 +243,7 @@ export function BundleManager() {
                         </DialogTrigger>
                         <DialogContent className="bg-zinc-900 border-zinc-800">
                           <DialogHeader>
-                            <DialogTitle>Reload Bundle Data</DialogTitle>
+                            <DialogTitle>Reload Dataset Data</DialogTitle>
                             <DialogDescription>
                               Upload a new file to replace the data in "{bundle.name}". Column mappings will be preserved where possible.
                             </DialogDescription>
@@ -503,11 +503,11 @@ function BundleCreator({ schemas, initialSchemaId, onComplete, onCancel }: Bundl
       {step === 'configure' && source && (
         <div className="flex-1 overflow-auto p-4 space-y-4">
           <div className="space-y-2">
-            <Label>Bundle Name</Label>
+            <Label>Dataset Name</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My Data Bundle"
+              placeholder="My Dataset"
               className="bg-zinc-800 border-zinc-700"
             />
           </div>
@@ -671,7 +671,7 @@ function BundleCreator({ schemas, initialSchemaId, onComplete, onCancel }: Bundl
               disabled={!hasRequiredMappings}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700"
             >
-              Create Bundle
+              Create Dataset
             </Button>
           </div>
         </div>
