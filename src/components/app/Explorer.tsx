@@ -92,7 +92,7 @@ export function Explorer() {
 
   // Create a bundle view with active schema and mappings
   const activeBundleView = useMemo(() => {
-    if (!selectedBundle || !activeSchema) return selectedBundle;
+    if (!selectedBundle || !activeSchema) return null;
 
     return {
       ...selectedBundle,
@@ -202,7 +202,7 @@ export function Explorer() {
   }
 
   // Show nothing if no bundle selected (will redirect via useEffect)
-  if (!selectedBundle) {
+  if (!selectedBundle || !activeBundleView) {
     return null;
   }
 
