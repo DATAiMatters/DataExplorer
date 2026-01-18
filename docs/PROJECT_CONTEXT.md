@@ -4,7 +4,7 @@ This document captures the purpose, design decisions, and rationale behind Data 
 
 **Author:** Pedro Cardoso - The Data Ninja
 📧 mrtechie@gmail.com | 💼 [LinkedIn](https://www.linkedin.com/in/thedataninja/) | 🔗 [Linktree](https://linktr.ee/thedataninja)
-**Last Updated:** January 11, 2026
+**Last Updated:** January 18, 2026
 
 ## Project Purpose
 
@@ -76,6 +76,43 @@ The target users are data analysts and engineers who need to explore and underst
 - Avoid library lock-in
 
 **Trade-off:** More code to write and maintain.
+
+### 6. Multi-Schema Datasets & Auto-Mapping (Added: January 18, 2026)
+
+**Decision:** Allow datasets to support multiple schema views with automatic mapping generation for derived datasets.
+
+**Why:**
+- Same dataset can be viewed through different lenses (e.g., hierarchy tree vs. tabular profile)
+- Joined datasets inherit schemas from both source datasets
+- Eliminates manual mapping configuration for derived datasets
+- Enables rich exploration: join hierarchical + tabular data, view as either type
+
+**How it works:**
+- Datasets have a primary `schemaId` and optional `additionalSchemaIds`
+- Each schema has its own column mappings in `mappingsBySchema`
+- UI provides schema selector dropdown to switch between views
+- Auto-mapping function (`generateDerivedMappings`) creates mappings for joined data:
+  - Hierarchy mappings use left bundle's hierarchy roles
+  - Tabular mappings combine both bundles' columns with "Left:" and "Right:" prefixes
+  - Columns are prefixed with `left_*` and `right_*` after joins
+
+**Example use case:**
+- SAP Functional Locations (hierarchy schema: FLOC_ID → node_id, PARENT_FLOC → parent_id)
+- SAP Equipment Assets (tabular schema: various equipment fields)
+- Join them: creates derived dataset
+- View as hierarchy: see equipment within location tree
+- View as tabular: see all fields profiled with data quality metrics
+
+**Trade-offs:**
+- Increases complexity of bundle structure
+- Auto-mapping assumes conventions (left bundle = hierarchy source)
+- Multi-join virtual bundles not yet supported (only single joins)
+
+**Implementation files:**
+- `src/lib/joinUtils.ts` - `generateDerivedMappings()`, `materializeVirtualBundle()`
+- `src/components/app/Explorer.tsx` - Schema selector UI
+- `src/components/app/JoinBuilder.tsx` - Schema selection during join creation
+- `src/components/app/JoinsManager.tsx` - SAP sample data with hierarchy schema
 
 ## Visualization Decisions
 
@@ -184,9 +221,12 @@ data/               → Static data (default schemas)
 - [ ] Keyboard navigation
 
 ### Medium-term
+- [x] Multi-file joins (attach metrics to hierarchy) - ✅ COMPLETED Jan 18, 2026
+- [x] Multi-schema support for datasets - ✅ COMPLETED Jan 18, 2026
+- [x] Auto-mapping for derived datasets - ✅ COMPLETED Jan 18, 2026
+- [ ] Multi-join virtual bundles (chain multiple joins)
 - [ ] Database connectors (PostgreSQL, MySQL)
 - [ ] Neo4j integration for graph data
-- [ ] Multi-file joins (attach metrics to hierarchy)
 - [ ] Time series data type
 
 ### Long-term
@@ -207,9 +247,22 @@ The `/public/samples/` folder contains test files:
 - `floc-hierarchy.csv` - Plant equipment hierarchy
 - `work-orders.csv` - Maintenance work orders
 - `process-network.csv` - Business process relationships
+- `/public/samples/joins/` - SAP PM sample data for join testing:
+  - `fast-food-functional-locations.csv` - 30 FLOC hierarchy nodes (hierarchy schema)
+  - `fast-food-equipment-assets.csv` - 43 equipment items (tabular schema)
+  - Auto-loadable via "Load Sample Data" button in Joins panel
 
 These mirror real-world data structures from ERP systems.
 
+### Recent Updates
+
+**January 18, 2026 - Multi-Schema Auto-Mapping Feature**
+- Implemented schema stacking: datasets can have multiple schema views
+- Added auto-mapping for derived datasets (joins)
+- Updated SAP sample data to use hierarchy schema with tabular fallback
+- Enables viewing joined data as hierarchy OR tabular
+- See `docs/AUTO_MAPPING_TEST_PLAN.md` for testing details
+
 ---
 
-*Last updated: January 11, 2026 by Pedro Cardoso*
+*Last updated: January 18, 2026 by Pedro Cardoso*
