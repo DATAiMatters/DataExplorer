@@ -35,36 +35,38 @@ export function Explorer() {
   const [description, setDescription] = useState('');
 
   // Check if the selected bundle is a virtual bundle and materialize it
-  const selectedBundle = useMemo(() => {
+  const { selectedBundle, materializationError } = useMemo(() => {
     // First try to find it in regular bundles
     const regularBundle = bundles.find((b) => b.id === selectedBundleId);
-    if (regularBundle) return regularBundle;
+    if (regularBundle) return { selectedBundle: regularBundle, materializationError: null };
 
     // If not found, check if it's a virtual bundle
     const virtualBundle = virtualBundles.find((vb) => vb.id === selectedBundleId);
     if (virtualBundle) {
       try {
         // Materialize the virtual bundle on-demand
-        return materializeVirtualBundle(virtualBundle, bundles, joins);
+        const materialized = materializeVirtualBundle(virtualBundle, bundles, joins);
+        return { selectedBundle: materialized, materializationError: null };
       } catch (error) {
         console.error('Failed to materialize virtual bundle:', error);
-        return null;
+        return { selectedBundle: null, materializationError: error instanceof Error ? error.message : 'Unknown error' };
       }
     }
 
-    return null;
+    return { selectedBundle: null, materializationError: null };
   }, [selectedBundleId, bundles, virtualBundles, joins]);
 
   const selectedSchema = selectedBundle
     ? schemas.find((s) => s.id === selectedBundle.schemaId)
     : null;
 
-  // Redirect to bundles view if no bundle is selected
+  // Redirect to bundles view if no bundle is selected AND no ID is set (empty state)
+  // Don't redirect if there's a materialization error - show it instead
   useEffect(() => {
-    if (!selectedBundle) {
+    if (!selectedBundle && !selectedBundleId) {
       setViewMode('bundles');
     }
-  }, [selectedBundle, setViewMode]);
+  }, [selectedBundle, selectedBundleId, setViewMode]);
 
   const handleReloadFile = useCallback((file: File) => {
     if (!selectedBundle) return;
@@ -127,7 +129,36 @@ export function Explorer() {
     }
   };
 
-  // No bundle selected - redirect happens in useEffect above
+  // Show error if virtual bundle materialization failed
+  if (materializationError) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-6">
+        <div className="max-w-md text-center">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-400" />
+          </div>
+          <h2 className="text-xl font-semibold text-zinc-200 mb-2">Failed to Load Derived Dataset</h2>
+          <p className="text-zinc-400 mb-4">
+            There was an error materializing this derived dataset from its source join.
+          </p>
+          <Alert className="bg-red-500/10 border-red-500/20 mb-4">
+            <AlertDescription className="text-red-200 text-sm">
+              {materializationError}
+            </AlertDescription>
+          </Alert>
+          <Button
+            onClick={() => setViewMode('relationships')}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Joins
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show nothing if no bundle selected (will redirect via useEffect)
   if (!selectedBundle) {
     return null;
   }
