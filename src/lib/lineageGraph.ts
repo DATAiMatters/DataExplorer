@@ -127,6 +127,7 @@ export class LineageGraph {
 
   /**
    * Add edge from bundle to schema (bundle uses schema)
+   * Ensures schema node exists before adding edge. Uses stable edge key.
    */
   private addBundleToSchemaEdge(bundle: DataBundle): void {
     const schemaNodeId = `schema:${bundle.schemaId}`;
@@ -135,7 +136,7 @@ export class LineageGraph {
     const edgeKey = `${bundle.id}-uses-${schemaNodeId}`;
     if (this.graph.hasEdge(edgeKey)) return;
 
-    this.graph.addDirectedEdge(bundle.id, schemaNodeId, {
+    this.graph.addDirectedEdgeWithKey(edgeKey, bundle.id, schemaNodeId, {
       type: 'uses_schema',
       label: 'uses schema',
     } as LineageEdge);
@@ -143,6 +144,7 @@ export class LineageGraph {
 
   /**
    * Add join edge between two bundles
+   * Uses stable edge key to prevent duplicates.
    */
   private addJoinEdge(join: JoinDefinition): void {
     if (!this.graph.hasNode(join.leftBundleId) || !this.graph.hasNode(join.rightBundleId)) {
@@ -152,7 +154,7 @@ export class LineageGraph {
     const edgeKey = `${join.leftBundleId}-join-${join.rightBundleId}`;
     if (this.graph.hasEdge(edgeKey)) return;
 
-    this.graph.addDirectedEdge(join.leftBundleId, join.rightBundleId, {
+    this.graph.addDirectedEdgeWithKey(edgeKey, join.leftBundleId, join.rightBundleId, {
       type: 'join',
       label: `${join.joinType} join`,
       joinId: join.id,
@@ -161,6 +163,7 @@ export class LineageGraph {
 
   /**
    * Add derivation edges from source bundles to virtual bundle
+   * Ensures bundle nodes exist and uses stable edge keys.
    */
   private addVirtualBundleDerivations(vBundle: VirtualBundle, joins: JoinDefinition[]): void {
     vBundle.sourceJoinIds.forEach((joinId) => {
@@ -169,18 +172,24 @@ export class LineageGraph {
 
       // Virtual bundle is derived from left bundle
       if (this.graph.hasNode(join.leftBundleId)) {
-        this.graph.addDirectedEdge(join.leftBundleId, vBundle.id, {
-          type: 'derived_from',
-          label: 'source',
-        } as LineageEdge);
+        const edgeKey = `${join.leftBundleId}-derived-${vBundle.id}`;
+        if (!this.graph.hasEdge(edgeKey)) {
+          this.graph.addDirectedEdgeWithKey(edgeKey, join.leftBundleId, vBundle.id, {
+            type: 'derived_from',
+            label: 'source',
+          } as LineageEdge);
+        }
       }
 
       // Virtual bundle is derived from right bundle
       if (this.graph.hasNode(join.rightBundleId)) {
-        this.graph.addDirectedEdge(join.rightBundleId, vBundle.id, {
-          type: 'derived_from',
-          label: 'source',
-        } as LineageEdge);
+        const edgeKey = `${join.rightBundleId}-derived-${vBundle.id}`;
+        if (!this.graph.hasEdge(edgeKey)) {
+          this.graph.addDirectedEdgeWithKey(edgeKey, join.rightBundleId, vBundle.id, {
+            type: 'derived_from',
+            label: 'source',
+          } as LineageEdge);
+        }
       }
     });
   }

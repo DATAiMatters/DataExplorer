@@ -246,7 +246,12 @@ export interface ExplorerState {
 export interface AppState {
   schemas: SemanticSchema[];
   bundles: DataBundle[];
+  joins: JoinDefinition[];
+  virtualBundles: VirtualBundle[];
   viewMode: ViewMode;
   explorerState: ExplorerState;
+  relationshipTypeConfig: import('@/config/relationshipTypes').RelationshipTypeConfig;
   aiSettings: AISettings;
+  journalEntries: JournalEntry[];
+  preselectedSchemaId: string | null;
 }

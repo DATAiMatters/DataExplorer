@@ -68,11 +68,9 @@ export function executeJoin(
 
     case 'left':
       result = executeLeftJoin(leftData, rightData, conditionMappings, rightColumns);
-      // Only count left rows that actually matched with right rows
-      matchedLeftRows = countUniqueMatchedRows(
-        result.filter((row) => !isNullRow(row, rightColumns)),
-        leftColumns
-      );
+      // Left join: all left rows are included (matched or not)
+      matchedLeftRows = leftData.length;
+      // Only count right rows that actually matched
       matchedRightRows = countUniqueMatchedRows(
         result.filter((row) => !isNullRow(row, rightColumns)),
         rightColumns
@@ -81,15 +79,13 @@ export function executeJoin(
 
     case 'right':
       result = executeRightJoin(leftData, rightData, conditionMappings, leftColumns);
+      // Only count left rows that actually matched
       matchedLeftRows = countUniqueMatchedRows(
         result.filter((row) => !isNullRow(row, leftColumns)),
         leftColumns
       );
-      // Only count right rows that actually matched with left rows
-      matchedRightRows = countUniqueMatchedRows(
-        result.filter((row) => !isNullRow(row, leftColumns)),
-        rightColumns
-      );
+      // Right join: all right rows are included (matched or not)
+      matchedRightRows = rightData.length;
       break;
 
     case 'full':
@@ -327,13 +323,23 @@ function isNullRow(row: ParsedRow, columns: string[]): boolean {
 
 /**
  * Count unique rows that have non-null values
+ * Properly handles 0, "", and false as legitimate values (not null matches)
  */
 function countUniqueMatchedRows(rows: ParsedRow[], columns: string[]): number {
   const uniqueRows = new Set<string>();
 
   for (const row of rows) {
-    // Use nullish coalescing to preserve 0, "", false as legitimate values
-    const rowKey = columns.map((col) => row[`left_${col}`] ?? row[`right_${col}`]).join('|');
+    // Build row key using both left_ and right_ prefixed columns
+    // Use JSON.stringify to preserve type information (0 vs null vs "")
+    const rowKey = columns
+      .map((col) => {
+        const leftVal = row[`left_${col}`];
+        const rightVal = row[`right_${col}`];
+        // Use whichever value is present (left takes precedence)
+        const val = leftVal !== null && leftVal !== undefined ? leftVal : rightVal;
+        return JSON.stringify(val);
+      })
+      .join('|');
     uniqueRows.add(rowKey);
   }
 

@@ -29,6 +29,7 @@ export interface HelpContent {
     schemas: ViewHelp;
     relationships: ViewHelp;
     explorer: ViewHelp;
+    journal: ViewHelp; // <-- Add journal view
   };
   explorerTips: {
     hierarchy: string[];
@@ -162,6 +163,24 @@ Try one of the sample datasets to see how it works:
         { label: 'Switch Bundle', description: 'Explore a different dataset' },
         { label: 'Zoom Controls', description: 'Zoom in/out or reset view' },
         { label: 'View Data', description: 'See raw data in table format' },
+      ],
+    },
+
+    journal: {
+      title: 'Journal',
+      description: 'Capture notes, insights, and data exploration findings. Use the journal to document your analysis process and key observations.',
+      tips: [
+        'Add new entries to record your thoughts or findings',
+        'Edit or delete entries as your analysis evolves',
+        'Tag entries for easy filtering and organization',
+        'Use the journal to keep a running log of your data exploration journey',
+        'Entries are saved locally and persist across sessions',
+      ],
+      quickActions: [
+        { label: 'Add Entry', description: 'Create a new journal entry' },
+        { label: 'Edit Entry', description: 'Update the title, content, or tags' },
+        { label: 'Delete Entry', description: 'Remove an entry from your journal' },
+        { label: 'Filter by Tag', description: 'Quickly find related notes' },
       ],
     },
   },
