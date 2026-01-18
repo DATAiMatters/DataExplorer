@@ -246,6 +246,14 @@ function executeFullOuterJoin(
 }
 
 /**
+ * Normalize a value for comparison (trim whitespace, convert to string)
+ */
+function normalizeValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+/**
  * Evaluate all join conditions for two rows
  */
 function evaluateJoinConditions(
@@ -259,9 +267,10 @@ function evaluateJoinConditions(
 
     switch (condition.operator) {
       case '=':
-        return leftValue === rightValue;
+        // Normalize strings for comparison (trim whitespace, case-sensitive)
+        return normalizeValue(leftValue) === normalizeValue(rightValue);
       case '!=':
-        return leftValue !== rightValue;
+        return normalizeValue(leftValue) !== normalizeValue(rightValue);
       case '>':
         return Number(leftValue) > Number(rightValue);
       case '<':
@@ -271,7 +280,7 @@ function evaluateJoinConditions(
       case '<=':
         return Number(leftValue) <= Number(rightValue);
       case 'like':
-        return String(leftValue).includes(String(rightValue));
+        return normalizeValue(leftValue).includes(normalizeValue(rightValue));
       default:
         return false;
     }
@@ -387,4 +396,54 @@ export function validateJoin(
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Materialize a virtual bundle by executing its join(s) and returning a DataBundle
+ */
+export function materializeVirtualBundle(
+  virtualBundle: import('@/types').VirtualBundle,
+  bundles: import('@/types').DataBundle[],
+  joins: import('@/types').JoinDefinition[]
+): import('@/types').DataBundle {
+  // For now, we only support single-join virtual bundles
+  if (virtualBundle.sourceJoinIds.length !== 1) {
+    throw new Error('Multi-join virtual bundles are not yet supported');
+  }
+
+  const joinId = virtualBundle.sourceJoinIds[0];
+  const join = joins.find((j) => j.id === joinId);
+  if (!join) {
+    throw new Error(`Join not found: ${joinId}`);
+  }
+
+  const leftBundle = bundles.find((b) => b.id === join.leftBundleId);
+  const rightBundle = bundles.find((b) => b.id === join.rightBundleId);
+
+  if (!leftBundle || !rightBundle) {
+    throw new Error('Source bundles not found for join');
+  }
+
+  // Execute the join
+  const joinResult = executeJoin(leftBundle, rightBundle, join);
+
+  // Create a materialized DataBundle from the join result
+  const materializedBundle: import('@/types').DataBundle = {
+    id: virtualBundle.id,
+    name: virtualBundle.name,
+    description: virtualBundle.description || `Derived dataset from join: ${join.name}`,
+    schemaId: virtualBundle.schemaId,
+    source: {
+      type: 'csv',
+      fileName: `${virtualBundle.name}.csv`,
+      rawData: '', // Could generate CSV if needed
+      parsedData: joinResult.data,
+      columns: [...joinResult.leftColumns.map(c => `left_${c}`), ...joinResult.rightColumns.map(c => `right_${c}`)],
+    },
+    mappings: [],  // Could auto-generate mappings based on schema
+    createdAt: virtualBundle.createdAt,
+    updatedAt: virtualBundle.updatedAt,
+  };
+
+  return materializedBundle;
 }

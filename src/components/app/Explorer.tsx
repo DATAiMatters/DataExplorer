@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAppStore } from '@/store';
 import { parseFile } from '@/lib/dataUtils';
 import { callLLM } from '@/lib/aiService';
 import { describeDataPrompt } from '@/lib/aiPrompts';
+import { materializeVirtualBundle } from '@/lib/joinUtils';
 import { HierarchyExplorer } from './visualizations/HierarchyExplorer';
 import { TabularExplorer } from './visualizations/TabularExplorer';
 import { NetworkExplorer } from './visualizations/NetworkExplorer';
@@ -19,6 +20,8 @@ import { ArrowLeft, RefreshCw, Upload, Plus, Sparkles, Loader2, FileText } from 
 
 export function Explorer() {
   const bundles = useAppStore((s) => s.bundles);
+  const virtualBundles = useAppStore((s) => s.virtualBundles);
+  const joins = useAppStore((s) => s.joins);
   const schemas = useAppStore((s) => s.schemas);
   const aiSettings = useAppStore((s) => s.aiSettings);
   const selectedBundleId = useAppStore((s) => s.explorerState.selectedBundleId);
@@ -31,7 +34,27 @@ export function Explorer() {
   const [showDescription, setShowDescription] = useState(false);
   const [description, setDescription] = useState('');
 
-  const selectedBundle = bundles.find((b) => b.id === selectedBundleId);
+  // Check if the selected bundle is a virtual bundle and materialize it
+  const selectedBundle = useMemo(() => {
+    // First try to find it in regular bundles
+    const regularBundle = bundles.find((b) => b.id === selectedBundleId);
+    if (regularBundle) return regularBundle;
+
+    // If not found, check if it's a virtual bundle
+    const virtualBundle = virtualBundles.find((vb) => vb.id === selectedBundleId);
+    if (virtualBundle) {
+      try {
+        // Materialize the virtual bundle on-demand
+        return materializeVirtualBundle(virtualBundle, bundles, joins);
+      } catch (error) {
+        console.error('Failed to materialize virtual bundle:', error);
+        return null;
+      }
+    }
+
+    return null;
+  }, [selectedBundleId, bundles, virtualBundles, joins]);
+
   const selectedSchema = selectedBundle
     ? schemas.find((s) => s.id === selectedBundle.schemaId)
     : null;
