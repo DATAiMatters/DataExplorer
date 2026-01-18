@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, RefreshCw, Upload, Plus, Sparkles, Loader2, FileText } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Upload, Plus, Sparkles, Loader2, FileText, AlertCircle } from 'lucide-react';
 
 export function Explorer() {
   const bundles = useAppStore((s) => s.bundles);

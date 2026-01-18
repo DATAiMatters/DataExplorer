@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp, Sparkles, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp, Sparkles, Loader2, CheckCircle2, AlertTriangle, Database, GitMerge } from 'lucide-react';
 import type { DataBundle, ColumnMapping, DataSource, SemanticSchema } from '@/types';
 
 const dataTypeIcons = {
