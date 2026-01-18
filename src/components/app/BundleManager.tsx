@@ -28,6 +28,8 @@ const dataTypeIcons = {
 
 export function BundleManager() {
   const bundles = useAppStore((s) => s.bundles);
+  const virtualBundles = useAppStore((s) => s.virtualBundles);
+  const joins = useAppStore((s) => s.joins);
   const schemas = useAppStore((s) => s.schemas);
   const addBundle = useAppStore((s) => s.addBundle);
   const updateBundle = useAppStore((s) => s.updateBundle);
@@ -159,7 +161,7 @@ export function BundleManager() {
       </header>
 
       <ScrollArea className="flex-1">
-        {bundles.length === 0 ? (
+        {bundles.length === 0 && virtualBundles.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
               <Upload className="w-8 h-8 text-zinc-600" />
@@ -171,6 +173,7 @@ export function BundleManager() {
           </div>
         ) : (
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            {/* Regular bundles */}
             {bundles.map((bundle) => {
               const schema = schemas.find((s) => s.id === bundle.schemaId);
               const Icon = schema ? dataTypeIcons[schema.dataType] : FileText;
@@ -277,6 +280,65 @@ export function BundleManager() {
                         onClick={() => deleteBundle(bundle.id)}
                       >
                         <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {/* Virtual bundles (derived datasets) */}
+            {virtualBundles.map((vBundle) => {
+              const schema = schemas.find((s) => s.id === vBundle.schemaId);
+              const Icon = schema ? dataTypeIcons[schema.dataType] : FileText;
+              const sourceJoin = vBundle.sourceJoinIds.length > 0 ? joins.find((j) => j.id === vBundle.sourceJoinIds[0]) : null;
+
+              return (
+                <Card key={vBundle.id} className="bg-zinc-900 border-emerald-800/30 hover:border-emerald-700/50 transition-colors">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <CardTitle className="text-base truncate">{vBundle.name}</CardTitle>
+                            <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">
+                              DERIVED
+                            </Badge>
+                          </div>
+                          {vBundle.description && (
+                            <CardDescription className="text-xs line-clamp-2 mt-1">
+                              {vBundle.description}
+                            </CardDescription>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <Database className="w-3 h-3" />
+                      <span>{schema?.name || 'Unknown Schema'}</span>
+                    </div>
+                    {sourceJoin && (
+                      <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <GitMerge className="w-3 h-3" />
+                        <span>From join: {sourceJoin.name}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedBundle(vBundle.id);
+                          setViewMode('explorer');
+                        }}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        <FileText className="w-3 h-3 mr-2" />
+                        Explore
                       </Button>
                     </div>
                   </CardContent>
