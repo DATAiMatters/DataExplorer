@@ -1,13 +1,13 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import { useAppStore } from '@/store';
-import { transformToHierarchy, findNodeById, flattenHierarchy } from '@/lib/dataUtils';
+import { transformToHierarchy, transformJoinedToHierarchy, findNodeById, flattenHierarchy } from '@/lib/dataUtils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ChevronRight, Home, Maximize, LayoutGrid, GitBranch, ZoomIn, ZoomOut, RotateCcw, ArrowRight, ArrowDown, Eye } from 'lucide-react';
 import { DataGridView } from './DataGridView';
-import type { DataBundle, SemanticSchema, HierarchyNode } from '@/types';
+import type { DataBundle, SemanticSchema, HierarchyNode, ColumnMapping } from '@/types';
 
 interface Props {
   bundle: DataBundle;
@@ -29,15 +29,57 @@ export function HierarchyExplorer({ bundle }: Props) {
   const [viewType, setViewType] = useState<ViewType>('treemap');
   const [treeOrientation, setTreeOrientation] = useState<TreeOrientation>('horizontal');
 
+  // Detect if this is a joined dataset by checking for left_/right_ prefixed columns
+  const isJoinedData = useMemo(() => {
+    if (bundle.source.columns.length === 0) return false;
+    const hasLeftColumns = bundle.source.columns.some(col => col.startsWith('left_'));
+    const hasRightColumns = bundle.source.columns.some(col => col.startsWith('right_'));
+    return hasLeftColumns && hasRightColumns;
+  }, [bundle.source.columns]);
+
+  // Get left and right mappings for joined data
+  const { leftMappings, rightMappings } = useMemo(() => {
+    if (!isJoinedData || !bundle.mappingsBySchema) {
+      return { leftMappings: [], rightMappings: [] };
+    }
+
+    // Get all mappings for the current schema
+    const currentMappings = bundle.mappings;
+
+    // Split into left and right based on column prefixes
+    const left: ColumnMapping[] = [];
+    const right: ColumnMapping[] = [];
+
+    for (const mapping of currentMappings) {
+      if (mapping.sourceColumn.startsWith('left_')) {
+        // Remove prefix for the transformation function
+        left.push({
+          ...mapping,
+          sourceColumn: mapping.sourceColumn.replace(/^left_/, ''),
+        });
+      } else if (mapping.sourceColumn.startsWith('right_')) {
+        right.push({
+          ...mapping,
+          sourceColumn: mapping.sourceColumn.replace(/^right_/, ''),
+        });
+      }
+    }
+
+    return { leftMappings: left, rightMappings: right };
+  }, [isJoinedData, bundle.mappings, bundle.mappingsBySchema]);
+
   // Transform data to hierarchy
   const hierarchyData = useMemo(() => {
     try {
+      if (isJoinedData && leftMappings.length > 0 && rightMappings.length > 0) {
+        return transformJoinedToHierarchy(bundle.source, leftMappings, rightMappings);
+      }
       return transformToHierarchy(bundle.source, bundle.mappings);
     } catch (e) {
       console.error('Failed to transform hierarchy:', e);
       return [];
     }
-  }, [bundle]);
+  }, [bundle, isJoinedData, leftMappings, rightMappings]);
 
   // Get current view nodes based on breadcrumb
   const currentNodes = useMemo(() => {
@@ -183,6 +225,21 @@ export function HierarchyExplorer({ bundle }: Props) {
           <Badge variant="secondary" className="bg-zinc-800 text-zinc-400">
             {stats.totalNodes} total
           </Badge>
+
+          {/* Semantic Zone Indicator for Joined Data */}
+          {isJoinedData && (
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-zinc-700">
+              <span className="text-xs text-zinc-500">Semantic Zones:</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-emerald-600" />
+                <span className="text-xs text-zinc-400">Hierarchy</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded border-2 border-purple-500 border-dashed" />
+                <span className="text-xs text-zinc-400">Child Items</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -298,6 +355,7 @@ function TreemapView({ currentNodes, colorScale, hoveredNode, setHoveredNode, on
             const width = x1 - x0;
             const height = y1 - y0;
             const hasChildren = node.children && node.children.length > 0;
+            const isFromRightSide = node.id.startsWith('right:');
 
             const color = colorScale(String((node.depth || 0) % 6));
             const isHovered = hoveredNode?.id === node.id;
@@ -322,6 +380,18 @@ function TreemapView({ currentNodes, colorScale, hoveredNode, setHoveredNode, on
                   rx={4}
                   className="transition-all duration-150"
                 />
+                {isFromRightSide && (
+                  <rect
+                    width={width}
+                    height={height}
+                    fill="none"
+                    stroke="#a855f7"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    strokeOpacity={0.6}
+                    rx={4}
+                  />
+                )}
 
                 {width > 40 && height > 30 && (
                   <foreignObject x={4} y={4} width={width - 8} height={height - 8}>
@@ -558,6 +628,7 @@ function TreeView({ hierarchyData, focusedNodeId, colorScale, hoveredNode, setHo
               const hasChildren = node.children && node.children.length > 0;
               const isHovered = hoveredNode?.id === node.id;
               const isVirtualRoot = node.id === '__virtual_root__';
+              const isFromRightSide = node.id.startsWith('right:');
 
               if (isVirtualRoot) return null;
 
@@ -585,6 +656,18 @@ function TreeView({ hierarchyData, focusedNodeId, colorScale, hoveredNode, setHo
                     strokeWidth={2}
                     className="transition-all duration-150"
                   />
+
+                  {/* Dashed ring for nodes from right side (equipment) */}
+                  {isFromRightSide && (
+                    <circle
+                      r={10}
+                      fill="none"
+                      stroke="#a855f7"
+                      strokeWidth={1.5}
+                      strokeDasharray="2 2"
+                      strokeOpacity={0.6}
+                    />
+                  )}
 
                   {/* Node label */}
                   <text

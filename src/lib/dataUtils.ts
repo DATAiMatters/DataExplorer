@@ -114,6 +114,153 @@ export function transformToHierarchy(
   return roots;
 }
 
+/**
+ * Transform joined data to hierarchy with semantic zones
+ *
+ * This function handles the special case of joined datasets where:
+ * - Left side contains a hierarchy (e.g., functional locations)
+ * - Right side contains child items (e.g., equipment) that belong under the hierarchy
+ *
+ * The result shows the hierarchy with child items nested appropriately,
+ * with visual indicators for semantic zone boundaries.
+ */
+export function transformJoinedToHierarchy(
+  source: DataSource,
+  leftMappings: ColumnMapping[],
+  rightMappings: ColumnMapping[]
+): HierarchyNode[] {
+  // Get mappings for the left side (hierarchy)
+  const leftNodeIdMapping = leftMappings.find((m) => m.roleId === 'node_id');
+  const leftNodeLabelMapping = leftMappings.find((m) => m.roleId === 'node_label');
+  const leftParentIdMapping = leftMappings.find((m) => m.roleId === 'parent_id');
+  const leftMetricMappings = leftMappings.filter((m) => m.roleId === 'metric');
+
+  // Get mappings for the right side (child items)
+  const rightNodeIdMapping = rightMappings.find((m) => m.roleId === 'row_id' || m.roleId === 'node_id');
+  const rightNodeLabelMapping = rightMappings.find((m) => m.roleId === 'text' || m.roleId === 'node_label');
+  // Find the foreign key that references the left side
+  const rightParentRefMapping = rightMappings.find((m) => m.roleId === 'text' && m.displayName.toLowerCase().includes('location'));
+  const rightMetricMappings = rightMappings.filter((m) => m.roleId === 'measure' || m.roleId === 'metric');
+
+  if (!leftNodeIdMapping || !leftParentIdMapping) {
+    throw new Error('Joined hierarchy requires node_id and parent_id mappings on left side');
+  }
+
+  if (!rightNodeIdMapping || !rightParentRefMapping) {
+    throw new Error('Joined hierarchy requires row_id and parent reference on right side');
+  }
+
+  const nodesMap = new Map<string, HierarchyNode>();
+
+  // First pass: Create hierarchy nodes from left side
+  // Track which left nodes we've seen to avoid duplicates
+  const seenLeftNodes = new Set<string>();
+
+  for (const row of source.parsedData) {
+    const leftId = String(row[`left_${leftNodeIdMapping.sourceColumn}`] ?? '');
+
+    // Skip if this is a null left row (from right join) or we've already seen this node
+    if (!leftId || leftId === 'null' || leftId === '' || seenLeftNodes.has(leftId)) {
+      continue;
+    }
+
+    seenLeftNodes.add(leftId);
+
+    const leftLabel = leftNodeLabelMapping
+      ? String(row[`left_${leftNodeLabelMapping.sourceColumn}`] ?? leftId)
+      : leftId;
+    const leftParentId = row[`left_${leftParentIdMapping.sourceColumn}`];
+
+    const metrics: Record<string, number> = {};
+    for (const mm of leftMetricMappings) {
+      const value = row[`left_${mm.sourceColumn}`];
+      if (value !== null && value !== undefined) {
+        metrics[mm.displayName] = Number(value) || 0;
+      }
+    }
+
+    nodesMap.set(leftId, {
+      id: leftId,
+      label: leftLabel,
+      parentId: leftParentId ? String(leftParentId) : null,
+      metrics,
+      children: [],
+      depth: undefined,
+    });
+  }
+
+  // Second pass: Add child items from right side
+  for (const row of source.parsedData) {
+    const rightId = row[`right_${rightNodeIdMapping.sourceColumn}`];
+    const rightParentRef = row[`right_${rightParentRefMapping.sourceColumn}`];
+
+    // Skip rows where right side is null (unmatched left rows in left join)
+    if (rightId === null || rightId === undefined || rightParentRef === null || rightParentRef === undefined) {
+      continue;
+    }
+
+    const rightIdStr = String(rightId);
+    const rightParentRefStr = String(rightParentRef);
+    const rightLabel = rightNodeLabelMapping
+      ? String(row[`right_${rightNodeLabelMapping.sourceColumn}`] ?? rightIdStr)
+      : rightIdStr;
+
+    const metrics: Record<string, number> = {};
+    for (const mm of rightMetricMappings) {
+      const value = row[`right_${mm.sourceColumn}`];
+      if (value !== null && value !== undefined) {
+        metrics[mm.displayName] = Number(value) || 0;
+      }
+    }
+
+    // Create child node with special marker indicating it's from the right side
+    const childNode: HierarchyNode = {
+      id: `right:${rightIdStr}`,
+      label: rightLabel,
+      parentId: rightParentRefStr,
+      metrics,
+      children: [],
+      depth: undefined,
+    };
+
+    // Add to parent node
+    const parent = nodesMap.get(rightParentRefStr);
+    if (parent) {
+      parent.children = parent.children || [];
+      parent.children.push(childNode);
+    }
+  }
+
+  // Third pass: Build tree structure for left hierarchy
+  const roots: HierarchyNode[] = [];
+
+  for (const node of nodesMap.values()) {
+    if (!node.parentId || node.parentId === '' || !nodesMap.has(node.parentId)) {
+      node.depth = 0;
+      roots.push(node);
+    } else {
+      const parent = nodesMap.get(node.parentId);
+      if (parent) {
+        parent.children = parent.children || [];
+        parent.children.push(node);
+      }
+    }
+  }
+
+  // Fourth pass: Calculate depths
+  function setDepths(nodes: HierarchyNode[], depth: number) {
+    for (const node of nodes) {
+      node.depth = depth;
+      if (node.children && node.children.length > 0) {
+        setDepths(node.children, depth + 1);
+      }
+    }
+  }
+  setDepths(roots, 0);
+
+  return roots;
+}
+
 // ============================================
 // DATA TRANSFORMATION - TABULAR PROFILING
 // ============================================

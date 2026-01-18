@@ -164,7 +164,7 @@ export function JoinsManager() {
           },
           mappings: [
             { roleId: 'row_id', sourceColumn: 'EQUIPMENT_ID', displayName: 'Equipment ID' },
-            { roleId: 'text', sourceColumn: 'FUNCTIONAL_LOCATION', displayName: 'Functional Location' },  // Join key
+            { roleId: 'text', sourceColumn: 'FLOC_ID', displayName: 'Functional Location' },  // Join key
             { roleId: 'category', sourceColumn: 'EQUIPMENT_TYPE', displayName: 'Equipment Type' },
             { roleId: 'category', sourceColumn: 'STATUS', displayName: 'Status' },
             { roleId: 'category', sourceColumn: 'CRITICALITY', displayName: 'Criticality' },
