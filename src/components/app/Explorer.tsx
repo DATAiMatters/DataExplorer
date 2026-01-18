@@ -45,8 +45,8 @@ export function Explorer() {
     const virtualBundle = virtualBundles.find((vb) => vb.id === selectedBundleId);
     if (virtualBundle) {
       try {
-        // Materialize the virtual bundle on-demand
-        const materialized = materializeVirtualBundle(virtualBundle, bundles, joins);
+        // Materialize the virtual bundle on-demand with auto-generated mappings
+        const materialized = materializeVirtualBundle(virtualBundle, bundles, joins, schemas);
         return { selectedBundle: materialized, materializationError: null };
       } catch (error) {
         console.error('Failed to materialize virtual bundle:', error);
@@ -55,7 +55,7 @@ export function Explorer() {
     }
 
     return { selectedBundle: null, materializationError: null };
-  }, [selectedBundleId, bundles, virtualBundles, joins]);
+  }, [selectedBundleId, bundles, virtualBundles, joins, schemas]);
 
   // Get available schemas for the selected bundle
   const availableSchemas = useMemo(() => {

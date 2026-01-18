@@ -399,12 +399,90 @@ export function validateJoin(
 }
 
 /**
+ * Auto-generate column mappings for a derived dataset based on selected schemas
+ */
+export function generateDerivedMappings(
+  leftBundle: DataBundle,
+  rightBundle: DataBundle,
+  schemas: import('@/types').SemanticSchema[],
+  selectedSchemaIds: string[]
+): { primaryMappings: ColumnMapping[]; mappingsBySchema: Record<string, ColumnMapping[]> } {
+  const mappingsBySchema: Record<string, ColumnMapping[]> = {};
+
+  for (const schemaId of selectedSchemaIds) {
+    const schema = schemas.find((s) => s.id === schemaId);
+    if (!schema) continue;
+
+    const mappings: ColumnMapping[] = [];
+
+    if (schema.dataType === 'hierarchy') {
+      // Generate hierarchy mappings from left bundle (assumed to be hierarchical)
+      const leftNodeIdMapping = leftBundle.mappings.find((m) => m.roleId === 'node_id');
+      const leftLabelMapping = leftBundle.mappings.find((m) => m.roleId === 'node_label');
+      const leftParentIdMapping = leftBundle.mappings.find((m) => m.roleId === 'parent_id');
+
+      if (leftNodeIdMapping) {
+        mappings.push({
+          roleId: 'node_id',
+          sourceColumn: `left_${leftNodeIdMapping.sourceColumn}`,
+          displayName: leftNodeIdMapping.displayName,
+        });
+      }
+
+      if (leftLabelMapping) {
+        mappings.push({
+          roleId: 'node_label',
+          sourceColumn: `left_${leftLabelMapping.sourceColumn}`,
+          displayName: leftLabelMapping.displayName,
+        });
+      }
+
+      if (leftParentIdMapping) {
+        mappings.push({
+          roleId: 'parent_id',
+          sourceColumn: `left_${leftParentIdMapping.sourceColumn}`,
+          displayName: leftParentIdMapping.displayName,
+        });
+      }
+    } else if (schema.dataType === 'tabular') {
+      // Generate tabular mappings from both bundles
+      // Map left bundle columns
+      for (const mapping of leftBundle.mappings) {
+        mappings.push({
+          roleId: mapping.roleId,
+          sourceColumn: `left_${mapping.sourceColumn}`,
+          displayName: `Left: ${mapping.displayName}`,
+        });
+      }
+
+      // Map right bundle columns
+      for (const mapping of rightBundle.mappings) {
+        mappings.push({
+          roleId: mapping.roleId,
+          sourceColumn: `right_${mapping.sourceColumn}`,
+          displayName: `Right: ${mapping.displayName}`,
+        });
+      }
+    }
+
+    mappingsBySchema[schemaId] = mappings;
+  }
+
+  // Primary mappings are from the first selected schema
+  const primarySchemaId = selectedSchemaIds[0];
+  const primaryMappings = primarySchemaId ? mappingsBySchema[primarySchemaId] || [] : [];
+
+  return { primaryMappings, mappingsBySchema };
+}
+
+/**
  * Materialize a virtual bundle by executing its join(s) and returning a DataBundle
  */
 export function materializeVirtualBundle(
   virtualBundle: import('@/types').VirtualBundle,
   bundles: import('@/types').DataBundle[],
-  joins: import('@/types').JoinDefinition[]
+  joins: import('@/types').JoinDefinition[],
+  schemas?: import('@/types').SemanticSchema[]
 ): import('@/types').DataBundle {
   // For now, we only support single-join virtual bundles
   if (virtualBundle.sourceJoinIds.length !== 1) {
@@ -427,6 +505,22 @@ export function materializeVirtualBundle(
   // Execute the join
   const joinResult = executeJoin(leftBundle, rightBundle, join);
 
+  // Auto-generate mappings if schemas provided and virtual bundle has mappingsBySchema
+  let mappings = virtualBundle.mappingsBySchema?.[virtualBundle.schemaId] || [];
+  let mappingsBySchema = virtualBundle.mappingsBySchema;
+
+  // If no mappings exist and schemas are provided, auto-generate them
+  if (schemas && (!mappingsBySchema || Object.keys(mappingsBySchema).length === 0)) {
+    const selectedSchemaIds = [
+      virtualBundle.schemaId,
+      ...(virtualBundle.additionalSchemaIds || []),
+    ];
+
+    const generated = generateDerivedMappings(leftBundle, rightBundle, schemas, selectedSchemaIds);
+    mappings = generated.primaryMappings;
+    mappingsBySchema = generated.mappingsBySchema;
+  }
+
   // Create a materialized DataBundle from the join result
   const materializedBundle: import('@/types').DataBundle = {
     id: virtualBundle.id,
@@ -441,8 +535,8 @@ export function materializeVirtualBundle(
       parsedData: joinResult.data,
       columns: [...joinResult.leftColumns.map(c => `left_${c}`), ...joinResult.rightColumns.map(c => `right_${c}`)],
     },
-    mappings: [],  // Primary schema mappings (empty for now, could auto-generate)
-    mappingsBySchema: virtualBundle.mappingsBySchema,  // Pass through multi-schema mappings
+    mappings,  // Auto-generated or passed-through mappings
+    mappingsBySchema,  // Auto-generated or passed-through multi-schema mappings
     createdAt: virtualBundle.createdAt,
     updatedAt: virtualBundle.updatedAt,
   };

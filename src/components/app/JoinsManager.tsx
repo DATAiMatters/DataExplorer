@@ -88,22 +88,25 @@ export function JoinsManager() {
       const equipText = await equipResponse.text();
       const equipParsed = parseCSV(equipText);
 
-      // Find tabular schema
+      // Find hierarchy and tabular schemas
+      const hierarchySchema = schemas.find((s) => s.dataType === 'hierarchy');
       const tabularSchema = schemas.find((s) => s.dataType === 'tabular');
-      if (!tabularSchema) {
-        alert('Tabular schema not found. Cannot load sample data.');
+
+      if (!hierarchySchema || !tabularSchema) {
+        alert('Required schemas not found. Cannot load sample data.');
         setLoadingSamples(false);
         return;
       }
 
-      // Create FLOC bundle
+      // Create FLOC bundle with Hierarchy schema + Tabular schema support
       let flocBundleId: string;
       if (!existingFlocBundle) {
         const flocBundle: DataBundle = {
           id: generateId(),
           name: 'SAP Functional Locations',
           description: 'Functional Location hierarchy for FastBite restaurant chain (SAP PM data)',
-          schemaId: tabularSchema.id,
+          schemaId: hierarchySchema.id,  // Primary schema is Hierarchy
+          additionalSchemaIds: [tabularSchema.id],  // Also support Tabular view
           source: {
             type: 'csv',
             fileName: 'fast-food-functional-locations.csv',
@@ -112,13 +115,28 @@ export function JoinsManager() {
             columns: flocParsed.columns,
           },
           mappings: [
-            { roleId: 'row_id', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
-            { roleId: 'category', sourceColumn: 'FLOC_TYPE', displayName: 'FLOC Type' },
-            { roleId: 'category', sourceColumn: 'REGION', displayName: 'Region' },
-            { roleId: 'category', sourceColumn: 'STATUS', displayName: 'Status' },
-            { roleId: 'text', sourceColumn: 'FLOC_NAME', displayName: 'FLOC Name' },
-            { roleId: 'text', sourceColumn: 'PARENT_FLOC', displayName: 'Parent FLOC' },
+            // Hierarchy schema mappings
+            { roleId: 'node_id', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
+            { roleId: 'node_label', sourceColumn: 'FLOC_NAME', displayName: 'FLOC Name' },
+            { roleId: 'parent_id', sourceColumn: 'PARENT_FLOC', displayName: 'Parent FLOC' },
           ],
+          mappingsBySchema: {
+            // Hierarchy schema mappings (same as primary)
+            [hierarchySchema.id]: [
+              { roleId: 'node_id', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
+              { roleId: 'node_label', sourceColumn: 'FLOC_NAME', displayName: 'FLOC Name' },
+              { roleId: 'parent_id', sourceColumn: 'PARENT_FLOC', displayName: 'Parent FLOC' },
+            ],
+            // Tabular schema mappings for alternative view
+            [tabularSchema.id]: [
+              { roleId: 'row_id', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
+              { roleId: 'category', sourceColumn: 'FLOC_TYPE', displayName: 'FLOC Type' },
+              { roleId: 'category', sourceColumn: 'REGION', displayName: 'Region' },
+              { roleId: 'category', sourceColumn: 'STATUS', displayName: 'Status' },
+              { roleId: 'text', sourceColumn: 'FLOC_NAME', displayName: 'FLOC Name' },
+              { roleId: 'text', sourceColumn: 'PARENT_FLOC', displayName: 'Parent FLOC' },
+            ],
+          },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -145,11 +163,11 @@ export function JoinsManager() {
           },
           mappings: [
             { roleId: 'row_id', sourceColumn: 'EQUIPMENT_ID', displayName: 'Equipment ID' },
+            { roleId: 'text', sourceColumn: 'FUNCTIONAL_LOCATION', displayName: 'Functional Location' },  // Join key
             { roleId: 'category', sourceColumn: 'EQUIPMENT_TYPE', displayName: 'Equipment Type' },
             { roleId: 'category', sourceColumn: 'STATUS', displayName: 'Status' },
             { roleId: 'category', sourceColumn: 'CRITICALITY', displayName: 'Criticality' },
             { roleId: 'text', sourceColumn: 'EQUIPMENT_NAME', displayName: 'Equipment Name' },
-            { roleId: 'text', sourceColumn: 'FLOC_ID', displayName: 'FLOC ID' },
             { roleId: 'text', sourceColumn: 'MANUFACTURER', displayName: 'Manufacturer' },
             { roleId: 'measure', sourceColumn: 'ACQUISITION_COST', displayName: 'Acquisition Cost' },
           ],
@@ -182,8 +200,8 @@ export function JoinsManager() {
           joinType: 'left',
           conditions: [
             {
-              leftRoleId: 'row_id',  // FLOC_ID from Functional Locations
-              rightRoleId: 'text',   // FLOC_ID from Equipment (first text field)
+              leftRoleId: 'node_id',  // FLOC_ID from Functional Locations (hierarchy schema)
+              rightRoleId: 'text',    // FUNCTIONAL_LOCATION from Equipment (first text field)
               operator: '=',
             },
           ],

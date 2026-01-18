@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '@/store';
 import { generateId } from '@/lib/dataUtils';
+import { generateDerivedMappings } from '@/lib/joinUtils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -221,9 +222,21 @@ export function JoinBuilder({ existingJoin, onClose }: JoinBuilderProps) {
 
       addJoin(join);
 
-      // Create virtual bundle with multi-schema support
+      // Create virtual bundle with multi-schema support and auto-generated mappings
       const primarySchemaId = selectedSchemaIds[0] || leftBundle?.schemaId || '';
       const additionalSchemaIds = selectedSchemaIds.slice(1);
+
+      // Auto-generate mappings for all selected schemas (only if both bundles exist)
+      let mappingsBySchema = undefined;
+      if (leftBundle && rightBundle) {
+        const generated = generateDerivedMappings(
+          leftBundle,
+          rightBundle,
+          schemas,
+          selectedSchemaIds.length > 0 ? selectedSchemaIds : [primarySchemaId]
+        );
+        mappingsBySchema = generated.mappingsBySchema;
+      }
 
       const vBundle = {
         id: generateId(),
@@ -232,6 +245,7 @@ export function JoinBuilder({ existingJoin, onClose }: JoinBuilderProps) {
         sourceJoinIds: [join.id],
         schemaId: primarySchemaId,
         additionalSchemaIds: additionalSchemaIds.length > 0 ? additionalSchemaIds : undefined,
+        mappingsBySchema,  // Include auto-generated mappings
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
