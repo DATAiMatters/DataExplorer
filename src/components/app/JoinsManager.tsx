@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { GitMerge, Trash2, Eye, AlertCircle, ArrowRight, Database, Download } from 'lucide-react';
+import { GitMerge, Trash2, Eye, AlertCircle, ArrowRight, Database, Download, Edit2 } from 'lucide-react';
 import { JoinBuilder } from './JoinBuilder';
 import { parseCSV } from '@/lib/dataUtils';
 import { generateId } from '@/lib/dataUtils';
@@ -25,6 +25,7 @@ export function JoinsManager() {
   const updateBundle = useAppStore((s) => s.updateBundle);
 
   const [showBuilder, setShowBuilder] = useState(false);
+  const [editingJoinId, setEditingJoinId] = useState<string | null>(null);
   const [loadingSamples, setLoadingSamples] = useState(false);
 
   const handleDeleteJoin = (joinId: string) => {
@@ -273,6 +274,16 @@ export function JoinsManager() {
               <JoinBuilder />
             </DialogContent>
           </Dialog>
+
+          {/* Edit Join Dialog */}
+          <Dialog open={editingJoinId !== null} onOpenChange={(open) => !open && setEditingJoinId(null)}>
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-zinc-900 border-zinc-800">
+              <JoinBuilder
+                existingJoin={joins.find((j) => j.id === editingJoinId)}
+                onClose={() => setEditingJoinId(null)}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
@@ -337,6 +348,14 @@ export function JoinsManager() {
                             View
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-zinc-700"
+                          onClick={() => setEditingJoinId(join.id)}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"

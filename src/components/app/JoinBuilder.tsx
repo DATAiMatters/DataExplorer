@@ -12,18 +12,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ArrowRight, Plus, Trash2, AlertCircle, CheckCircle2, GitMerge, Play, Info } from 'lucide-react';
 import type { JoinDefinition, JoinCondition, JoinType, JoinOperator } from '@/types';
 
-export function JoinBuilder() {
+interface JoinBuilderProps {
+  existingJoin?: JoinDefinition;
+  onClose?: () => void;
+}
+
+export function JoinBuilder({ existingJoin, onClose }: JoinBuilderProps) {
   const bundles = useAppStore((s) => s.bundles);
   const schemas = useAppStore((s) => s.schemas);
   const addJoin = useAppStore((s) => s.addJoin);
+  const updateJoin = useAppStore((s) => s.updateJoin);
   const addVirtualBundle = useAppStore((s) => s.addVirtualBundle);
   const setViewMode = useAppStore((s) => s.setViewMode);
 
-  const [name, setName] = useState('');
-  const [leftBundleId, setLeftBundleId] = useState('');
-  const [rightBundleId, setRightBundleId] = useState('');
-  const [joinType, setJoinType] = useState<JoinType>('inner');
-  const [conditions, setConditions] = useState<JoinCondition[]>([]);
+  const [name, setName] = useState(existingJoin?.name || '');
+  const [leftBundleId, setLeftBundleId] = useState(existingJoin?.leftBundleId || '');
+  const [rightBundleId, setRightBundleId] = useState(existingJoin?.rightBundleId || '');
+  const [joinType, setJoinType] = useState<JoinType>(existingJoin?.joinType || 'inner');
+  const [conditions, setConditions] = useState<JoinCondition[]>(existingJoin?.conditions || []);
   const [showPreview, setShowPreview] = useState(false);
   const [testResults, setTestResults] = useState<{
     leftRows: number;
@@ -152,41 +158,59 @@ export function JoinBuilder() {
   const handleCreateJoin = () => {
     if (!leftBundleId || !rightBundleId || conditions.length === 0) return;
 
-    const join: JoinDefinition = {
-      id: generateId(),
-      name: name || `${leftBundle?.name} × ${rightBundle?.name}`,
-      leftBundleId,
-      rightBundleId,
-      joinType,
-      conditions,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    if (existingJoin) {
+      // Update existing join
+      updateJoin(existingJoin.id, {
+        name: name || `${leftBundle?.name} × ${rightBundle?.name}`,
+        leftBundleId,
+        rightBundleId,
+        joinType,
+        conditions,
+        updatedAt: new Date().toISOString(),
+      });
 
-    addJoin(join);
+      // Close the dialog if callback provided
+      if (onClose) {
+        onClose();
+      }
+    } else {
+      // Create new join
+      const join: JoinDefinition = {
+        id: generateId(),
+        name: name || `${leftBundle?.name} × ${rightBundle?.name}`,
+        leftBundleId,
+        rightBundleId,
+        joinType,
+        conditions,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-    // Create virtual bundle
-    const vBundle = {
-      id: generateId(),
-      name: `${leftBundle?.name} + ${rightBundle?.name}`,
-      type: 'join' as const,
-      sourceJoinIds: [join.id],
-      schemaId: leftBundle?.schemaId || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      addJoin(join);
 
-    addVirtualBundle(vBundle);
+      // Create virtual bundle
+      const vBundle = {
+        id: generateId(),
+        name: `${leftBundle?.name} + ${rightBundle?.name}`,
+        type: 'join' as const,
+        sourceJoinIds: [join.id],
+        schemaId: leftBundle?.schemaId || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-    // Reset form
-    setName('');
-    setLeftBundleId('');
-    setRightBundleId('');
-    setConditions([]);
-    setShowPreview(false);
+      addVirtualBundle(vBundle);
 
-    // Navigate to relationships view
-    setViewMode('relationships');
+      // Reset form
+      setName('');
+      setLeftBundleId('');
+      setRightBundleId('');
+      setConditions([]);
+      setShowPreview(false);
+
+      // Navigate to relationships view
+      setViewMode('relationships');
+    }
   };
 
   const canCreate =
@@ -532,7 +556,7 @@ export function JoinBuilder() {
                     )}
                   </Button>
                   <Button onClick={handleCreateJoin} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-                    Create Join
+                    {existingJoin ? 'Update Join' : 'Create Join'}
                   </Button>
                 </div>
               )}
