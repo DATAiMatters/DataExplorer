@@ -178,6 +178,8 @@ export function BundleManager() {
               const schema = schemas.find((s) => s.id === bundle.schemaId);
               const Icon = schema ? dataTypeIcons[schema.dataType] : FileText;
               const isSampleBundle = bundle.name === 'SAP Functional Locations' || bundle.name === 'SAP Equipment Assets';
+              const totalSchemas = 1 + (bundle.additionalSchemaIds?.length || 0);
+              const hasMultipleSchemas = totalSchemas > 1;
 
               return (
                 <Card key={bundle.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
@@ -196,8 +198,13 @@ export function BundleManager() {
                               </Badge>
                             )}
                           </div>
-                          <CardDescription className="text-xs">
+                          <CardDescription className="text-xs flex items-center gap-1">
                             {schema?.name || 'Unknown schema'}
+                            {hasMultipleSchemas && (
+                              <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px] px-1 py-0">
+                                +{totalSchemas - 1} view{totalSchemas - 1 > 1 ? 's' : ''}
+                              </Badge>
+                            )}
                           </CardDescription>
                         </div>
                       </div>
@@ -292,6 +299,8 @@ export function BundleManager() {
               const schema = schemas.find((s) => s.id === vBundle.schemaId);
               const Icon = schema ? dataTypeIcons[schema.dataType] : FileText;
               const sourceJoin = vBundle.sourceJoinIds.length > 0 ? joins.find((j) => j.id === vBundle.sourceJoinIds[0]) : null;
+              const totalSchemas = 1 + (vBundle.additionalSchemaIds?.length || 0);
+              const hasMultipleSchemas = totalSchemas > 1;
 
               return (
                 <Card key={vBundle.id} className="bg-zinc-900 border-emerald-800/30 hover:border-emerald-700/50 transition-colors">
@@ -321,6 +330,11 @@ export function BundleManager() {
                     <div className="flex items-center gap-2 text-xs text-zinc-500">
                       <Database className="w-3 h-3" />
                       <span>{schema?.name || 'Unknown Schema'}</span>
+                      {hasMultipleSchemas && (
+                        <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px] px-1 py-0">
+                          +{totalSchemas - 1} view{totalSchemas - 1 > 1 ? 's' : ''}
+                        </Badge>
+                      )}
                     </div>
                     {sourceJoin && (
                       <div className="flex items-center gap-2 text-xs text-zinc-500">

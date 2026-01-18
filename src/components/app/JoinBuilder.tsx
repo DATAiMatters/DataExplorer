@@ -39,11 +39,44 @@ export function JoinBuilder({ existingJoin, onClose }: JoinBuilderProps) {
     matchedRightRows: number;
   } | null>(null);
   const [testing, setTesting] = useState(false);
+  const [selectedSchemaIds, setSelectedSchemaIds] = useState<string[]>([]);
 
   const leftBundle = bundles.find((b) => b.id === leftBundleId);
   const rightBundle = bundles.find((b) => b.id === rightBundleId);
   const leftSchema = leftBundle ? schemas.find((s) => s.id === leftBundle.schemaId) : null;
   const rightSchema = rightBundle ? schemas.find((s) => s.id === rightBundle.schemaId) : null;
+
+  // Get available schemas: union of schemas from both bundles
+  const availableSchemas = useMemo(() => {
+    if (!leftBundle || !rightBundle) return [];
+
+    const leftSchemaIds = new Set([leftBundle.schemaId, ...(leftBundle.additionalSchemaIds || [])]);
+    const rightSchemaIds = new Set([rightBundle.schemaId, ...(rightBundle.additionalSchemaIds || [])]);
+    const allSchemaIds = new Set([...leftSchemaIds, ...rightSchemaIds]);
+
+    return Array.from(allSchemaIds)
+      .map(id => schemas.find(s => s.id === id))
+      .filter(Boolean) as typeof schemas;
+  }, [leftBundle, rightBundle, schemas]);
+
+  // Smart default: if both bundles have same primary schema, use it; otherwise suggest both
+  const defaultSchemas = useMemo(() => {
+    if (!leftBundle || !rightBundle) return [];
+
+    if (leftBundle.schemaId === rightBundle.schemaId) {
+      return [leftBundle.schemaId];
+    }
+
+    // Different schemas - offer both
+    return [leftBundle.schemaId, rightBundle.schemaId];
+  }, [leftBundle, rightBundle]);
+
+  // Initialize selected schemas when bundles change
+  useMemo(() => {
+    if (selectedSchemaIds.length === 0 && defaultSchemas.length > 0) {
+      setSelectedSchemaIds(defaultSchemas);
+    }
+  }, [defaultSchemas, selectedSchemaIds.length]);
 
   // Auto-suggest join conditions based on matching role IDs
   const suggestedConditions = useMemo(() => {
@@ -188,13 +221,17 @@ export function JoinBuilder({ existingJoin, onClose }: JoinBuilderProps) {
 
       addJoin(join);
 
-      // Create virtual bundle
+      // Create virtual bundle with multi-schema support
+      const primarySchemaId = selectedSchemaIds[0] || leftBundle?.schemaId || '';
+      const additionalSchemaIds = selectedSchemaIds.slice(1);
+
       const vBundle = {
         id: generateId(),
         name: `${leftBundle?.name} + ${rightBundle?.name}`,
         type: 'join' as const,
         sourceJoinIds: [join.id],
-        schemaId: leftBundle?.schemaId || '',
+        schemaId: primarySchemaId,
+        additionalSchemaIds: additionalSchemaIds.length > 0 ? additionalSchemaIds : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -333,6 +370,72 @@ export function JoinBuilder({ existingJoin, onClose }: JoinBuilderProps) {
                       {joinType === 'right' && `→ All rows from ${rightBundle?.name}, nulls where no match`}
                       {joinType === 'full' && '→ All rows from both datasets, nulls where no match'}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Schema Selection */}
+              {leftBundleId && rightBundleId && availableSchemas.length > 0 && (
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardHeader>
+                    <CardTitle className="text-base">Result Schema Views</CardTitle>
+                    <CardDescription>
+                      Select which schema views should be available for the derived dataset
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {availableSchemas.map((schema) => {
+                      const isSelected = selectedSchemaIds.includes(schema.id);
+                      const isPrimary = selectedSchemaIds[0] === schema.id;
+
+                      return (
+                        <div
+                          key={schema.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'border-emerald-500/30 bg-emerald-500/5'
+                              : 'border-zinc-700 hover:border-zinc-600'
+                          }`}
+                          onClick={() => {
+                            if (isSelected) {
+                              // Remove if not the last one
+                              if (selectedSchemaIds.length > 1) {
+                                setSelectedSchemaIds(selectedSchemaIds.filter(id => id !== schema.id));
+                              }
+                            } else {
+                              // Add to selection
+                              setSelectedSchemaIds([...selectedSchemaIds, schema.id]);
+                            }
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="w-4 h-4 rounded border-zinc-600 text-emerald-500"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-zinc-200">{schema.name}</span>
+                              {isPrimary && (
+                                <Badge variant="secondary" className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                                  PRIMARY
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-zinc-500 mt-0.5">{schema.description}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {selectedSchemaIds.length > 1 && (
+                      <Alert className="bg-blue-500/10 border-blue-500/20">
+                        <Info className="w-4 h-4 text-blue-400" />
+                        <AlertDescription className="text-blue-200 text-xs">
+                          Users will be able to switch between {selectedSchemaIds.length} different views of this data
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </CardContent>
                 </Card>
               )}

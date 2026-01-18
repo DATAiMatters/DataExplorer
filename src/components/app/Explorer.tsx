@@ -33,6 +33,7 @@ export function Explorer() {
   const [isDescribing, setIsDescribing] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
   const [description, setDescription] = useState('');
+  const [activeSchemaId, setActiveSchemaId] = useState<string | null>(null);
 
   // Check if the selected bundle is a virtual bundle and materialize it
   const { selectedBundle, materializationError } = useMemo(() => {
@@ -56,9 +57,51 @@ export function Explorer() {
     return { selectedBundle: null, materializationError: null };
   }, [selectedBundleId, bundles, virtualBundles, joins]);
 
-  const selectedSchema = selectedBundle
-    ? schemas.find((s) => s.id === selectedBundle.schemaId)
-    : null;
+  // Get available schemas for the selected bundle
+  const availableSchemas = useMemo(() => {
+    if (!selectedBundle) return [];
+    const schemaIds = [selectedBundle.schemaId, ...(selectedBundle.additionalSchemaIds || [])];
+    return schemaIds.map(id => schemas.find(s => s.id === id)).filter(Boolean) as typeof schemas;
+  }, [selectedBundle, schemas]);
+
+  // Reset active schema when bundle changes
+  useEffect(() => {
+    if (selectedBundle) {
+      setActiveSchemaId(selectedBundle.schemaId);
+    }
+  }, [selectedBundle?.id]);
+
+  // Get the currently active schema (default to primary schema)
+  const activeSchema = useMemo(() => {
+    const schemaId = activeSchemaId || selectedBundle?.schemaId;
+    return schemaId ? schemas.find((s) => s.id === schemaId) : null;
+  }, [activeSchemaId, selectedBundle?.schemaId, schemas]);
+
+  // Get mappings for the active schema
+  const activeMappings = useMemo(() => {
+    if (!selectedBundle || !activeSchemaId) return selectedBundle?.mappings || [];
+
+    // If we have mappingsBySchema, use it
+    if (selectedBundle.mappingsBySchema && selectedBundle.mappingsBySchema[activeSchemaId]) {
+      return selectedBundle.mappingsBySchema[activeSchemaId];
+    }
+
+    // Otherwise, use primary mappings
+    return selectedBundle.mappings;
+  }, [selectedBundle, activeSchemaId]);
+
+  // Create a bundle view with active schema and mappings
+  const activeBundleView = useMemo(() => {
+    if (!selectedBundle || !activeSchema) return selectedBundle;
+
+    return {
+      ...selectedBundle,
+      schemaId: activeSchema.id,
+      mappings: activeMappings,
+    };
+  }, [selectedBundle, activeSchema, activeMappings]);
+
+  const selectedSchema = activeSchema;
 
   // Redirect to bundles view if no bundle is selected AND no ID is set (empty state)
   // Don't redirect if there's a materialization error - show it instead
@@ -183,6 +226,28 @@ export function Explorer() {
           </p>
         </div>
 
+        {/* Schema Selector - only show if multiple schemas available */}
+        {availableSchemas.length > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-500">View as:</span>
+            <Select
+              value={activeSchemaId || selectedBundle.schemaId}
+              onValueChange={setActiveSchemaId}
+            >
+              <SelectTrigger className="w-[180px] bg-zinc-800 border-zinc-700 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-800 border-zinc-700">
+                {availableSchemas.map((schema) => (
+                  <SelectItem key={schema.id} value={schema.id}>
+                    {schema.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <Dialog open={isReloading} onOpenChange={setIsReloading}>
           <DialogTrigger asChild>
             <Button
@@ -278,28 +343,28 @@ export function Explorer() {
       {/* Visualization Area */}
       <div className="flex-1 overflow-hidden">
         {selectedSchema?.dataType === 'hierarchy' && (
-          <HierarchyExplorer bundle={selectedBundle} schema={selectedSchema} />
+          <HierarchyExplorer bundle={activeBundleView} schema={selectedSchema} />
         )}
         {selectedSchema?.dataType === 'tabular' && (
-          <TabularExplorer bundle={selectedBundle} schema={selectedSchema} />
+          <TabularExplorer bundle={activeBundleView} schema={selectedSchema} />
         )}
         {selectedSchema?.dataType === 'network' && (
-          <NetworkExplorer bundle={selectedBundle} schema={selectedSchema} />
+          <NetworkExplorer bundle={activeBundleView} schema={selectedSchema} />
         )}
         {selectedSchema?.dataType === 'heatmap' && (
-          <HeatMapExplorer bundle={selectedBundle} schema={selectedSchema} />
+          <HeatMapExplorer bundle={activeBundleView} schema={selectedSchema} />
         )}
         {selectedSchema?.dataType === 'treemap' && (
-          <TreeMapExplorer bundle={selectedBundle} schema={selectedSchema} />
+          <TreeMapExplorer bundle={activeBundleView} schema={selectedSchema} />
         )}
         {selectedSchema?.dataType === 'timeline' && (
-          <TimelineExplorer bundle={selectedBundle} schema={selectedSchema} />
+          <TimelineExplorer bundle={activeBundleView} schema={selectedSchema} />
         )}
         {selectedSchema?.dataType === 'flow' && (
-          <FlowExplorer bundle={selectedBundle} schema={selectedSchema} />
+          <FlowExplorer bundle={activeBundleView} schema={selectedSchema} />
         )}
         {selectedSchema?.dataType === 'geographic' && (
-          <GeographicExplorer bundle={selectedBundle} schema={selectedSchema} />
+          <GeographicExplorer bundle={activeBundleView} schema={selectedSchema} />
         )}
       </div>
     </div>

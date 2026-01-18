@@ -48,9 +48,11 @@ export interface DataBundle {
   id: string;
   name: string;
   description?: string;
-  schemaId: string;
+  schemaId: string; // Primary schema
+  additionalSchemaIds?: string[]; // Optional additional schemas for multi-view support
   source: DataSource;
-  mappings: ColumnMapping[];
+  mappings: ColumnMapping[]; // Mappings for primary schema
+  mappingsBySchema?: Record<string, ColumnMapping[]>; // Mappings per schema (including primary)
   createdAt: string;
   updatedAt: string;
 }
@@ -185,7 +187,9 @@ export interface VirtualBundle {
   description?: string;
   type: 'join' | 'union' | 'filter';
   sourceJoinIds: string[];  // References to JoinDefinitions
-  schemaId: string;         // Resulting schema after join
+  schemaId: string;         // Primary resulting schema after join
+  additionalSchemaIds?: string[]; // Optional additional schemas for multi-view support
+  mappingsBySchema?: Record<string, ColumnMapping[]>; // Mappings per schema
   createdAt: string;
   updatedAt: string;
 }

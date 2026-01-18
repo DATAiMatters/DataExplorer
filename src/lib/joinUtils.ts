@@ -433,6 +433,7 @@ export function materializeVirtualBundle(
     name: virtualBundle.name,
     description: virtualBundle.description || `Derived dataset from join: ${join.name}`,
     schemaId: virtualBundle.schemaId,
+    additionalSchemaIds: virtualBundle.additionalSchemaIds,
     source: {
       type: 'csv',
       fileName: `${virtualBundle.name}.csv`,
@@ -440,7 +441,8 @@ export function materializeVirtualBundle(
       parsedData: joinResult.data,
       columns: [...joinResult.leftColumns.map(c => `left_${c}`), ...joinResult.rightColumns.map(c => `right_${c}`)],
     },
-    mappings: [],  // Could auto-generate mappings based on schema
+    mappings: [],  // Primary schema mappings (empty for now, could auto-generate)
+    mappingsBySchema: virtualBundle.mappingsBySchema,  // Pass through multi-schema mappings
     createdAt: virtualBundle.createdAt,
     updatedAt: virtualBundle.updatedAt,
   };
