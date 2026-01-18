@@ -10,6 +10,7 @@ import { GitMerge, Trash2, Eye, AlertCircle, ArrowRight, Database, Download, Edi
 import { JoinBuilder } from './JoinBuilder';
 import { parseCSV } from '@/lib/dataUtils';
 import { generateId } from '@/lib/dataUtils';
+import { generateDerivedMappings } from '@/lib/joinUtils';
 import type { DataBundle, JoinDefinition, VirtualBundle } from '@/types';
 
 export function JoinsManager() {
@@ -214,14 +215,29 @@ export function JoinsManager() {
 
         addJoin(sampleJoin);
 
-        // Create virtual bundle
+        // Get the bundles we just created
+        const leftBundle = bundles.find((b) => b.id === flocBundleId);
+        const rightBundle = bundles.find((b) => b.id === equipBundleId);
+
+        // Create virtual bundle with both hierarchy and tabular schemas
+        const selectedSchemaIds = [hierarchySchema.id, tabularSchema.id];
+
+        // Auto-generate mappings for both schemas
+        let mappingsBySchema = undefined;
+        if (leftBundle && rightBundle) {
+          const generated = generateDerivedMappings(leftBundle, rightBundle, schemas, selectedSchemaIds);
+          mappingsBySchema = generated.mappingsBySchema;
+        }
+
         const virtualBundle: VirtualBundle = {
           id: generateId(),
           name: 'Equipment by Location (Derived)',
           description: 'Derived dataset showing equipment with their functional locations',
           type: 'join',
           sourceJoinIds: [sampleJoin.id],
-          schemaId: tabularSchema.id,
+          schemaId: hierarchySchema.id,  // Primary schema is Hierarchy
+          additionalSchemaIds: [tabularSchema.id],  // Also support Tabular view
+          mappingsBySchema,  // Auto-generated mappings for both schemas
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };

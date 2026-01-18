@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp, Sparkles, Loader2, CheckCircle2, AlertTriangle, Database, GitMerge } from 'lucide-react';
+import { Plus, Upload, Trash2, Play, FileText, Network, GitBranch, RefreshCw, Edit, Calendar, LayoutGrid, Grid3x3, MapPin, TrendingUp, Sparkles, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { DataBundle, ColumnMapping, DataSource, SemanticSchema } from '@/types';
 
 const dataTypeIcons = {
@@ -326,23 +326,19 @@ export function BundleManager() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
-                      <Database className="w-3 h-3" />
-                      <span>{schema?.name || 'Unknown Schema'}</span>
+                  <CardContent>
+                    <div className="text-xs text-zinc-500 mb-3">
+                      {sourceJoin && `From join: ${sourceJoin.name}`}
                       {hasMultipleSchemas && (
-                        <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px] px-1 py-0">
-                          +{totalSchemas - 1} view{totalSchemas - 1 > 1 ? 's' : ''}
-                        </Badge>
+                        <>
+                          {' • '}
+                          <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px] px-1 py-0 align-middle">
+                            +{totalSchemas - 1} view{totalSchemas - 1 > 1 ? 's' : ''}
+                          </Badge>
+                        </>
                       )}
                     </div>
-                    {sourceJoin && (
-                      <div className="flex items-center gap-2 text-xs text-zinc-500">
-                        <GitMerge className="w-3 h-3" />
-                        <span>From join: {sourceJoin.name}</span>
-                      </div>
-                    )}
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
                         onClick={() => {
@@ -351,8 +347,30 @@ export function BundleManager() {
                         }}
                         className="flex-1 bg-emerald-600 hover:bg-emerald-700"
                       >
-                        <FileText className="w-3 h-3 mr-2" />
+                        <Play className="w-3 h-3 mr-1" />
                         Explore
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700 hover:bg-zinc-800"
+                        onClick={() => setViewMode('relationships')}
+                        title="View join details"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700 hover:bg-zinc-800"
+                        onClick={() => {
+                          if (confirm(`Delete derived dataset "${vBundle.name}"?`)) {
+                            useAppStore.getState().deleteVirtualBundle(vBundle.id);
+                          }
+                        }}
+                        title="Delete derived dataset"
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   </CardContent>
