@@ -54,47 +54,67 @@ export const helpContent: HelpContent = {
         content: `Data Explorer helps you visualize and explore hierarchical, tabular, and network datasets using semantic schemas.
 
 **Key Features:**
-- Upload CSV/JSON files
-- Map columns to semantic roles
-- Explore data with interactive visualizations
-- Manage relationship types for network data`,
+- Upload CSV/JSON files and map to semantic schemas
+- Join datasets to create derived views
+- Explore with interactive hierarchy, network, and tabular visualizations
+- Track data lineage and document insights in your journal`,
       },
       {
         title: 'Step 1: Upload Your Data',
-        content: `Start by uploading a CSV or JSON file in the **Data Bundles** section.
+        content: `Start by uploading a CSV or JSON file in the **Datasets** section.
 
-Try one of the sample datasets to see how it works:
-- FLOC Hierarchy (hierarchical equipment data)
-- SAP BOM Network (table dependencies)
-- Work Orders (tabular data profiling)`,
+Try sample datasets to see how it works:
+- Hierarchy samples (FLOC, process trees)
+- Network samples (dependencies, workflows)
+- Tabular samples (work orders, metrics)`,
         highlight: 'bundles',
       },
       {
-        title: 'Step 2: Map Columns to Schema',
-        content: `After uploading, map your CSV columns to semantic roles based on the data type:
+        title: 'Step 2: Choose a Schema',
+        content: `Select a semantic schema that matches your data structure:
 
-**Hierarchy:** Node ID, Parent ID, Labels, Metrics
-**Network:** Source/Target Nodes, Edge Labels, Weights
-**Tabular:** Categories, Measures, Timestamps`,
+**Hierarchy:** Parent-child trees (org charts, FLOC structures)
+**Network:** Node-edge graphs (dependencies, workflows)
+**Tabular:** Flat data with categories and measures
+**+ More:** Timelines, treemaps, geographic, flow diagrams`,
+        highlight: 'schemas',
       },
       {
         title: 'Step 3: Explore Your Data',
         content: `Once mapped, explore your data with interactive visualizations:
 
-**Hierarchy:** Drill down, collapse branches, view metrics
-**Network:** Drag nodes, zoom, filter by relationship type
-**Tabular:** Profile data quality, view distributions, inspect values`,
+**Hierarchy:** Treemap or tree view, drill-down navigation
+**Network:** Force-directed graph with filters and styling
+**Tabular:** Data quality profiling, distributions, column stats`,
         highlight: 'explorer',
       },
       {
-        title: 'Advanced: Relationship Types',
-        content: `For network data, configure relationship types with colors and styles:
+        title: 'Join Datasets Together',
+        content: `Combine related datasets using the **Joins** feature:
 
-- 50+ predefined relationship types
-- Organize by category (Data Lineage, Quality, etc.)
-- Customize colors and line styles
-- Changes apply immediately to visualizations`,
-        highlight: 'relationship-types',
+- Link datasets on matching columns (like FLOC IDs)
+- Create derived datasets with data from multiple sources
+- View joined data with semantic zone indicators
+- Load sample join to see equipment under locations`,
+        highlight: 'joins',
+      },
+      {
+        title: 'Track Data Lineage',
+        content: `The **Lineage Graph** shows how your data connects:
+
+- See relationships between datasets and schemas
+- Track which joins created which derived datasets
+- Understand your data pipeline at a glance`,
+        highlight: 'lineage',
+      },
+      {
+        title: 'Document Your Insights',
+        content: `Use the **Journal** to capture notes during exploration:
+
+- Record findings and insights as you work
+- Tag entries for easy filtering
+- Build a narrative of your data discovery process`,
+        highlight: 'journal',
       },
     ],
   },
