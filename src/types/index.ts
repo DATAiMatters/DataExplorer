@@ -230,7 +230,7 @@ export interface LineageEdge {
 // UI STATE TYPES
 // ============================================
 
-export type ViewMode = 'bundles' | 'schemas' | 'explorer' | 'relationships' | 'ai-settings' | 'journal';
+export type ViewMode = 'bundles' | 'schemas' | 'explorer' | 'relationship-types' | 'joins' | 'lineage' | 'ai-settings' | 'journal';
 
 export interface ExplorerState {
   selectedBundleId: string | null;

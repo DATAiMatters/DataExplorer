@@ -27,9 +27,11 @@ export interface HelpContent {
   views: {
     bundles: ViewHelp;
     schemas: ViewHelp;
-    relationships: ViewHelp;
+    'relationship-types': ViewHelp;
+    joins: ViewHelp;
+    lineage: ViewHelp;
     explorer: ViewHelp;
-    journal: ViewHelp; // <-- Add journal view
+    journal: ViewHelp;
   };
   explorerTips: {
     hierarchy: string[];
@@ -92,7 +94,7 @@ Try one of the sample datasets to see how it works:
 - Organize by category (Data Lineage, Quality, etc.)
 - Customize colors and line styles
 - Changes apply immediately to visualizations`,
-        highlight: 'relationships',
+        highlight: 'relationship-types',
       },
     ],
   },
@@ -131,7 +133,7 @@ Try one of the sample datasets to see how it works:
       ],
     },
 
-    relationships: {
+    'relationship-types': {
       title: 'Relationship Types',
       description: 'Configure semantic relationship types for network visualizations with visual styling.',
       tips: [
@@ -146,6 +148,41 @@ Try one of the sample datasets to see how it works:
         { label: 'Add Type', description: 'Create a custom relationship type' },
         { label: 'Edit Type', description: 'Change color, style, or description' },
         { label: 'Reset to Defaults', description: 'Restore original configuration' },
+      ],
+    },
+
+    joins: {
+      title: 'Joins & Derived Datasets',
+      description: 'Create and manage joins between datasets to generate derived datasets with combined data.',
+      tips: [
+        'Select two bundles to join together',
+        'Choose join type: inner, left, right, or full outer',
+        'Map semantic roles from each dataset for join conditions',
+        'Preview join results before creating derived dataset',
+        'Derived datasets support multiple schema views',
+        'Load sample data to see how joins work',
+      ],
+      quickActions: [
+        { label: 'Create Join', description: 'Define a new join between datasets' },
+        { label: 'Load Sample Data', description: 'Try pre-configured sample join' },
+        { label: 'View Derived Data', description: 'Explore the joined dataset' },
+      ],
+    },
+
+    lineage: {
+      title: 'Data Lineage Graph',
+      description: 'Visualize relationships between datasets, schemas, joins, and derived data.',
+      tips: [
+        'Nodes represent bundles, virtual bundles, and schemas',
+        'Edges show joins, derivations, and schema usage',
+        'Drag nodes to rearrange the graph layout',
+        'Zoom and pan to navigate large lineage graphs',
+        'Colors indicate node types (bundles vs schemas)',
+        'Hover over nodes and edges to see details',
+      ],
+      quickActions: [
+        { label: 'Zoom In/Out', description: 'Navigate the graph view' },
+        { label: 'Reset Layout', description: 'Return to default positioning' },
       ],
     },
 

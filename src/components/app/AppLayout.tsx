@@ -4,7 +4,9 @@ import { Sidebar } from './Sidebar';
 import { BundleManager } from './BundleManager';
 import { SchemaManager } from './SchemaManager';
 import { Explorer } from './Explorer';
-import { RelationshipManager } from './RelationshipManager';
+import { RelationshipTypes } from './RelationshipTypes';
+import { JoinsManager } from './JoinsManager';
+import { Lineage } from './Lineage';
 import { AISettings } from './AISettings';
 import { Journal } from './Journal';
 import { WelcomeTour } from '@/components/ui/WelcomeTour';
@@ -43,7 +45,9 @@ export function AppLayout() {
       <main className="flex-1 overflow-hidden relative">
         {viewMode === 'bundles' && <BundleManager />}
         {viewMode === 'schemas' && <SchemaManager />}
-        {viewMode === 'relationships' && <RelationshipManager />}
+        {viewMode === 'relationship-types' && <RelationshipTypes />}
+        {viewMode === 'joins' && <JoinsManager />}
+        {viewMode === 'lineage' && <Lineage />}
         {viewMode === 'explorer' && <Explorer />}
         {viewMode === 'journal' && <Journal />}
         {viewMode === 'ai-settings' && <AISettings />}

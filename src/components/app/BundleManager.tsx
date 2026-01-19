@@ -354,7 +354,7 @@ export function BundleManager() {
                         size="sm"
                         variant="outline"
                         className="border-zinc-700 hover:bg-zinc-800"
-                        onClick={() => setViewMode('relationships')}
+                        onClick={() => setViewMode('joins')}
                         title="View join details"
                       >
                         <Edit className="w-3 h-3" />

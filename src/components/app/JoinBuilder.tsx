@@ -260,7 +260,7 @@ export function JoinBuilder({ existingJoin, onClose }: JoinBuilderProps) {
       setShowPreview(false);
 
       // Navigate to relationships view
-      setViewMode('relationships');
+      setViewMode('joins');
     }
   };
 

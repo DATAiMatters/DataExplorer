@@ -190,7 +190,7 @@ export function Explorer() {
             </AlertDescription>
           </Alert>
           <Button
-            onClick={() => setViewMode('relationships')}
+            onClick={() => setViewMode('joins')}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
