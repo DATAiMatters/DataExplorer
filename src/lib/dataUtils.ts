@@ -137,17 +137,37 @@ export function transformJoinedToHierarchy(
 
   // Get mappings for the right side (child items)
   const rightNodeIdMapping = rightMappings.find((m) => m.roleId === 'row_id' || m.roleId === 'node_id');
-  const rightNodeLabelMapping = rightMappings.find((m) => m.roleId === 'text' || m.roleId === 'node_label');
+  // Find the best label mapping - prefer one with 'name' in column or display name
+  const rightTextMappings = rightMappings.filter((m) => m.roleId === 'text' || m.roleId === 'node_label');
+  const rightNodeLabelMapping = rightTextMappings.find((m) => {
+    const colLower = m.sourceColumn.toLowerCase();
+    const displayLower = m.displayName.toLowerCase();
+    return colLower.includes('name') || displayLower.includes('name');
+  }) || rightTextMappings[0];
   // Find the foreign key that references the left side
-  const rightParentRefMapping = rightMappings.find((m) => m.roleId === 'text' && m.displayName.toLowerCase().includes('location'));
+  // Look for 'text' mapping that contains 'location' or 'floc' in column name or display name
+  const rightParentRefMapping = rightMappings.find((m) => {
+    if (m.roleId !== 'text') return false;
+    const colLower = m.sourceColumn.toLowerCase();
+    const displayLower = m.displayName.toLowerCase();
+    return colLower.includes('floc') || colLower.includes('location') ||
+           displayLower.includes('floc') || displayLower.includes('location');
+  });
   const rightMetricMappings = rightMappings.filter((m) => m.roleId === 'measure' || m.roleId === 'metric');
 
   if (!leftNodeIdMapping || !leftParentIdMapping) {
+    console.warn('Joined hierarchy: missing left side mappings', { leftMappings });
     throw new Error('Joined hierarchy requires node_id and parent_id mappings on left side');
   }
 
-  if (!rightNodeIdMapping || !rightParentRefMapping) {
-    throw new Error('Joined hierarchy requires row_id and parent reference on right side');
+  if (!rightNodeIdMapping) {
+    console.warn('Joined hierarchy: missing right node ID mapping', { rightMappings });
+    throw new Error('Joined hierarchy requires row_id on right side');
+  }
+
+  if (!rightParentRefMapping) {
+    console.warn('Joined hierarchy: missing right parent reference mapping', { rightMappings });
+    throw new Error('Joined hierarchy requires parent reference (location) on right side');
   }
 
   const nodesMap = new Map<string, HierarchyNode>();

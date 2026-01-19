@@ -450,6 +450,38 @@ export function generateDerivedMappings(
           displayName: leftParentIdMapping.displayName,
         });
       }
+
+      // Also include right bundle mappings for joined hierarchy visualization
+      // This allows equipment (right side) to appear under locations (left side)
+      const rightRowIdMapping = rightBundle.mappings.find((m) => m.roleId === 'row_id');
+      const rightTextMappings = rightBundle.mappings.filter((m) => m.roleId === 'text');
+      const rightMeasureMappings = rightBundle.mappings.filter((m) => m.roleId === 'measure');
+
+      if (rightRowIdMapping) {
+        mappings.push({
+          roleId: 'row_id',
+          sourceColumn: `right_${rightRowIdMapping.sourceColumn}`,
+          displayName: `Equipment: ${rightRowIdMapping.displayName}`,
+        });
+      }
+
+      // Include text mappings from right side (includes the foreign key to location)
+      for (const mapping of rightTextMappings) {
+        mappings.push({
+          roleId: 'text',
+          sourceColumn: `right_${mapping.sourceColumn}`,
+          displayName: `Equipment: ${mapping.displayName}`,
+        });
+      }
+
+      // Include measure mappings from right side
+      for (const mapping of rightMeasureMappings) {
+        mappings.push({
+          roleId: 'measure',
+          sourceColumn: `right_${mapping.sourceColumn}`,
+          displayName: `Equipment: ${mapping.displayName}`,
+        });
+      }
     } else if (schema.dataType === 'tabular') {
       // Generate tabular mappings from both bundles
       // Map left bundle columns
