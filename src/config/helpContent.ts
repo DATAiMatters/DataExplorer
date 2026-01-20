@@ -32,6 +32,7 @@ export interface HelpContent {
     lineage: ViewHelp;
     explorer: ViewHelp;
     journal: ViewHelp;
+    'business-outcomes': ViewHelp;
   };
   explorerTips: {
     hierarchy: string[];
@@ -238,6 +239,24 @@ Try sample datasets to see how it works:
         { label: 'Edit Entry', description: 'Update the title, content, or tags' },
         { label: 'Delete Entry', description: 'Remove an entry from your journal' },
         { label: 'Filter by Tag', description: 'Quickly find related notes' },
+      ],
+    },
+
+    'business-outcomes': {
+      title: 'Business Outcomes',
+      description: 'Connect business outcomes to process areas, KPIs, critical data elements, and data quality rules.',
+      tips: [
+        'Start with outcomes and link them to process areas',
+        'Define KPIs with clear targets and thresholds',
+        'Register critical data elements tied to each KPI',
+        'Document data quality rules and execution readiness',
+        'Use tags and owners to clarify accountability',
+      ],
+      quickActions: [
+        { label: 'Create Outcome', description: 'Define a strategic business outcome' },
+        { label: 'Add KPI', description: 'Capture a measurable metric' },
+        { label: 'Register CDE', description: 'Identify critical data elements' },
+        { label: 'Document Rule', description: 'Add data quality validation rules' },
       ],
     },
   },

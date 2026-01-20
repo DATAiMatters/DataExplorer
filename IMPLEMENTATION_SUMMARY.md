@@ -6,6 +6,100 @@
 
 ---
 
+# Business Outcomes Foundation + UI Scaffold - Implementation Summary
+
+**Date:** January 19, 2026
+**Status:** ✅ COMPLETED (Phase 1 Foundation + Phase 1.5 Edit/Linking)
+**Developer:** Codex (GPT-5), Claude Opus 4.5
+
+---
+
+## 🎯 What Was Built
+
+Foundational data model and UI scaffolding to support the Business Outcomes feature:
+Business Outcome → Process Area → KPI → Critical Data Element → Data Quality Rule.
+
+### Key Features Implemented
+
+1. **Typed Data Model** (GPT-5)
+   - Added full TypeScript interfaces and enums for outcomes, KPIs, CDEs, DQ rules, and trace links
+   - Added new view mode: `business-outcomes`
+
+2. **Zustand Store + Persistence** (GPT-5)
+   - Added CRUD actions for outcomes, KPIs, CDEs, DQ rules, and trace links
+   - Wired import/export persistence for new entities
+
+3. **Seed Data** (GPT-5)
+   - Added sample process areas, outcomes, and KPIs to demonstrate the flow
+
+4. **Business Outcomes UI** (GPT-5)
+   - New navigation item and view entry point
+   - Tabbed view with Outcome, KPI, CDE, and DQ Rule lists
+   - Create dialogs for each entity (manual entry)
+   - Summary cards for totals
+
+5. **Edit Flows + Inline Linking** (Claude Opus 4.5) - NEW
+   - Edit dialogs for all entity types (Outcomes, KPIs, CDEs, DQ Rules)
+   - Dropdown menus on cards with Edit, Link, and Delete options
+   - Link dialog for associating entities (Outcome↔KPI, KPI↔CDE, CDE↔Rule)
+   - Inline unlink via clickable badges showing linked items
+   - Bidirectional link management (updates both sides of relationships)
+
+---
+
+## 📁 Files Modified / Added
+
+### Types & Data
+- **`src/types/index.ts`**
+  - Added Business Outcomes types and enums
+  - Added `business-outcomes` view mode
+- **`src/data/businessOutcomes.ts`** (new)
+  - Sample process areas, outcomes, and KPIs
+
+### State Management
+- **`src/store/index.ts`**
+  - Added Business Outcomes slices + CRUD
+  - Added persistence + import/export wiring
+
+### UI Components
+- **`src/components/app/BusinessOutcomes.tsx`** (new, enhanced)
+  - Tabbed UI for Outcomes, KPIs, CDEs, DQ Rules
+  - Create + Edit dialogs for all entity types
+  - Dropdown menus with Edit/Link/Delete actions
+  - Link dialog for entity associations
+  - Inline badge-based unlink functionality
+  - Empty states
+- **`src/components/app/Sidebar.tsx`**
+  - Added nav item for Business Outcomes
+- **`src/components/app/AppLayout.tsx`**
+  - Render Business Outcomes view
+- **`src/components/app/index.ts`**
+  - Export Business Outcomes component
+- **`src/config/helpContent.ts`**
+  - Added contextual help for Business Outcomes
+
+---
+
+## ✅ Status + Next Implementation Targets
+
+**Completed in Phase 1 (GPT-5):**
+- Data model + store + UI scaffolding
+- Manual creation workflows
+- Seed data for demo
+
+**Completed in Phase 1.5 (Claude Opus 4.5):**
+- Edit flows for all entity types
+- Inline linking UI with dropdown menus
+- Link dialog for entity associations
+- Bidirectional link management
+- Unlink via clickable badges
+
+**Next logical steps:**
+1. ~~Add edit flows + inline linking (Outcome ↔ KPI ↔ CDE ↔ Rule)~~ ✅ DONE
+2. Add Outcome Canvas (traceability graph visualization)
+3. Add column-level "Mark as CDE" annotations in profiling view
+
+
 ## 🎯 What Was Built
 
 A comprehensive multi-schema support system that allows datasets to be viewed through different semantic lenses, with automatic column mapping generation for derived datasets created via joins.

@@ -1,6 +1,6 @@
 import { useAppStore } from '@/store';
 import { cn } from '@/lib/utils';
-import { Database, Layers, Download, Upload, GitBranch, Sparkles, BookOpen, ExternalLink, Link2, GitMerge, Network } from 'lucide-react';
+import { Database, Layers, Download, Upload, GitBranch, Sparkles, BookOpen, ExternalLink, Link2, GitMerge, Network, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -12,6 +12,7 @@ const GITHUB_REPO = 'https://github.com/DATAiMatters/DataExplorer';
 const navItems: { mode: ViewMode; icon: typeof Database; label: string }[] = [
   { mode: 'bundles', icon: Database, label: 'Datasets' },
   { mode: 'schemas', icon: Layers, label: 'Semantic Schemas' },
+  { mode: 'business-outcomes', icon: Target, label: 'Business Outcomes' },
   { mode: 'relationship-types', icon: Link2, label: 'Relationship Types' },
   { mode: 'joins', icon: GitMerge, label: 'Joins' },
   { mode: 'lineage', icon: Network, label: 'Lineage Graph' },

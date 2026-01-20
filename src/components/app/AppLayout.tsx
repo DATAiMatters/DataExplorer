@@ -9,6 +9,7 @@ import { JoinsManager } from './JoinsManager';
 import { Lineage } from './Lineage';
 import { AISettings } from './AISettings';
 import { Journal } from './Journal';
+import { BusinessOutcomes } from './BusinessOutcomes';
 import { WelcomeTour } from '@/components/ui/WelcomeTour';
 import { ContextualHelp } from '@/components/ui/ContextualHelp';
 import { DevGuide } from '@/components/ui/DevGuide';
@@ -51,6 +52,7 @@ export function AppLayout() {
         {viewMode === 'explorer' && <Explorer />}
         {viewMode === 'journal' && <Journal />}
         {viewMode === 'ai-settings' && <AISettings />}
+        {viewMode === 'business-outcomes' && <BusinessOutcomes />}
 
         {/* Contextual Help - Floating button per view */}
         <ContextualHelp view={viewMode} />

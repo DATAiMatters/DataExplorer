@@ -10,8 +10,15 @@ import type {
   JoinDefinition,
   VirtualBundle,
   JoinSuggestion,
+  BusinessOutcome,
+  ProcessArea,
+  KPI,
+  CriticalDataElement,
+  DataQualityRule,
+  TraceLink,
 } from '@/types';
 import { defaultSchemas } from '@/data/schemas';
+import { sampleKPIs, sampleOutcomes, sampleProcessAreas } from '@/data/businessOutcomes';
 import {
   defaultRelationshipTypeConfig,
   type RelationshipTypeConfig,
@@ -31,6 +38,12 @@ interface AppStore {
   relationshipTypeConfig: RelationshipTypeConfig;
   aiSettings: AISettings;
   journalEntries: JournalEntry[];
+  businessOutcomes: BusinessOutcome[];
+  processAreas: ProcessArea[];
+  kpis: KPI[];
+  cdes: CriticalDataElement[];
+  dqRules: DataQualityRule[];
+  traceLinks: TraceLink[];
   preselectedSchemaId: string | null; // For pre-filling bundle creation
   _importInProgress?: boolean; // Internal flag to prevent truncation during import
 
@@ -70,6 +83,31 @@ interface AppStore {
   addJournalEntry: (entry: JournalEntry) => void;
   updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => void;
   deleteJournalEntry: (id: string) => void;
+
+  // Business Outcomes actions
+  addBusinessOutcome: (outcome: BusinessOutcome) => void;
+  updateBusinessOutcome: (id: string, updates: Partial<BusinessOutcome>) => void;
+  deleteBusinessOutcome: (id: string) => void;
+
+  addProcessArea: (area: ProcessArea) => void;
+  updateProcessArea: (id: string, updates: Partial<ProcessArea>) => void;
+  deleteProcessArea: (id: string) => void;
+
+  addKPI: (kpi: KPI) => void;
+  updateKPI: (id: string, updates: Partial<KPI>) => void;
+  deleteKPI: (id: string) => void;
+
+  addCDE: (cde: CriticalDataElement) => void;
+  updateCDE: (id: string, updates: Partial<CriticalDataElement>) => void;
+  deleteCDE: (id: string) => void;
+
+  addDQRule: (rule: DataQualityRule) => void;
+  updateDQRule: (id: string, updates: Partial<DataQualityRule>) => void;
+  deleteDQRule: (id: string) => void;
+
+  addTraceLink: (link: TraceLink) => void;
+  updateTraceLink: (id: string, updates: Partial<TraceLink>) => void;
+  deleteTraceLink: (id: string) => void;
 
   // Join actions
   addJoin: (join: JoinDefinition) => void;
@@ -133,6 +171,12 @@ export const useAppStore = create<AppStore>()(
         maxTokens: 1000,
       },
       journalEntries: [],
+      businessOutcomes: sampleOutcomes,
+      processAreas: sampleProcessAreas,
+      kpis: sampleKPIs,
+      cdes: [],
+      dqRules: [],
+      traceLinks: [],
       preselectedSchemaId: null,
 
       // Schema actions
@@ -287,6 +331,109 @@ export const useAppStore = create<AppStore>()(
           journalEntries: state.journalEntries.filter((e) => e.id !== id),
         })),
 
+      // Business Outcomes actions
+      addBusinessOutcome: (outcome) =>
+        set((state) => ({
+          businessOutcomes: [...state.businessOutcomes, outcome],
+        })),
+
+      updateBusinessOutcome: (id, updates) =>
+        set((state) => ({
+          businessOutcomes: state.businessOutcomes.map((o) =>
+            o.id === id ? { ...o, ...updates, updatedAt: new Date().toISOString() } : o
+          ),
+        })),
+
+      deleteBusinessOutcome: (id) =>
+        set((state) => ({
+          businessOutcomes: state.businessOutcomes.filter((o) => o.id !== id),
+        })),
+
+      addProcessArea: (area) =>
+        set((state) => ({
+          processAreas: [...state.processAreas, area],
+        })),
+
+      updateProcessArea: (id, updates) =>
+        set((state) => ({
+          processAreas: state.processAreas.map((a) =>
+            a.id === id ? { ...a, ...updates } : a
+          ),
+        })),
+
+      deleteProcessArea: (id) =>
+        set((state) => ({
+          processAreas: state.processAreas.filter((a) => a.id !== id),
+        })),
+
+      addKPI: (kpi) =>
+        set((state) => ({
+          kpis: [...state.kpis, kpi],
+        })),
+
+      updateKPI: (id, updates) =>
+        set((state) => ({
+          kpis: state.kpis.map((k) =>
+            k.id === id ? { ...k, ...updates, updatedAt: new Date().toISOString() } : k
+          ),
+        })),
+
+      deleteKPI: (id) =>
+        set((state) => ({
+          kpis: state.kpis.filter((k) => k.id !== id),
+        })),
+
+      addCDE: (cde) =>
+        set((state) => ({
+          cdes: [...state.cdes, cde],
+        })),
+
+      updateCDE: (id, updates) =>
+        set((state) => ({
+          cdes: state.cdes.map((c) =>
+            c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c
+          ),
+        })),
+
+      deleteCDE: (id) =>
+        set((state) => ({
+          cdes: state.cdes.filter((c) => c.id !== id),
+        })),
+
+      addDQRule: (rule) =>
+        set((state) => ({
+          dqRules: [...state.dqRules, rule],
+        })),
+
+      updateDQRule: (id, updates) =>
+        set((state) => ({
+          dqRules: state.dqRules.map((r) =>
+            r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r
+          ),
+        })),
+
+      deleteDQRule: (id) =>
+        set((state) => ({
+          dqRules: state.dqRules.filter((r) => r.id !== id),
+        })),
+
+      addTraceLink: (link) =>
+        set((state) => ({
+          traceLinks: [...state.traceLinks, link],
+        })),
+
+      updateTraceLink: (id, updates) =>
+        set((state) => ({
+          traceLinks: state.traceLinks.map((l) =>
+            l.id === id ? { ...l, ...updates, updatedAt: new Date().toISOString() } : l
+          ),
+        })),
+
+      deleteTraceLink: (id) =>
+        set((state) => ({
+          traceLinks: state.traceLinks.filter((l) => l.id !== id),
+        })),
+
       // Join actions
       addJoin: (join) =>
         set((state) => ({
@@ -418,16 +565,22 @@ export const useAppStore = create<AppStore>()(
             bundles: state.bundles, // Full data, no truncation
             joins: state.joins,
             virtualBundles: state.virtualBundles,
-            relationshipTypeConfig: state.relationshipTypeConfig,
-            aiSettings: {
-              ...state.aiSettings,
-              apiKey: '', // Strip API key for security
-            },
-            journalEntries: state.journalEntries,
+          relationshipTypeConfig: state.relationshipTypeConfig,
+          aiSettings: {
+            ...state.aiSettings,
+            apiKey: '', // Strip API key for security
           },
-          null,
-          2
-        );
+          journalEntries: state.journalEntries,
+          businessOutcomes: state.businessOutcomes,
+          processAreas: state.processAreas,
+          kpis: state.kpis,
+          cdes: state.cdes,
+          dqRules: state.dqRules,
+          traceLinks: state.traceLinks,
+        },
+        null,
+        2
+      );
       },
 
       importConfig: (json) => {
@@ -474,6 +627,31 @@ export const useAppStore = create<AppStore>()(
             set({ journalEntries: config.journalEntries });
           }
 
+          // Import business outcomes entities
+          if (Array.isArray(config.businessOutcomes)) {
+            set({ businessOutcomes: config.businessOutcomes });
+          }
+
+          if (Array.isArray(config.processAreas)) {
+            set({ processAreas: config.processAreas });
+          }
+
+          if (Array.isArray(config.kpis)) {
+            set({ kpis: config.kpis });
+          }
+
+          if (Array.isArray(config.cdes)) {
+            set({ cdes: config.cdes });
+          }
+
+          if (Array.isArray(config.dqRules)) {
+            set({ dqRules: config.dqRules });
+          }
+
+          if (Array.isArray(config.traceLinks)) {
+            set({ traceLinks: config.traceLinks });
+          }
+
           // Import joins
           if (Array.isArray(config.joins)) {
             set({ joins: config.joins });
@@ -517,6 +695,12 @@ export const useAppStore = create<AppStore>()(
             relationshipTypeConfig: state.relationshipTypeConfig,
             aiSettings: state.aiSettings,
             journalEntries: state.journalEntries,
+            businessOutcomes: state.businessOutcomes,
+            processAreas: state.processAreas,
+            kpis: state.kpis,
+            cdes: state.cdes,
+            dqRules: state.dqRules,
+            traceLinks: state.traceLinks,
           };
         }
 
@@ -537,6 +721,12 @@ export const useAppStore = create<AppStore>()(
           relationshipTypeConfig: state.relationshipTypeConfig,
           aiSettings: state.aiSettings,
           journalEntries: state.journalEntries,
+          businessOutcomes: state.businessOutcomes,
+          processAreas: state.processAreas,
+          kpis: state.kpis,
+          cdes: state.cdes,
+          dqRules: state.dqRules,
+          traceLinks: state.traceLinks,
         };
       },
     }

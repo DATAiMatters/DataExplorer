@@ -4,7 +4,7 @@ This document captures the purpose, design decisions, and rationale behind Data 
 
 **Author:** Pedro Cardoso - The Data Ninja
 📧 mrtechie@gmail.com | 💼 [LinkedIn](https://www.linkedin.com/in/thedataninja/) | 🔗 [Linktree](https://linktr.ee/thedataninja)
-**Last Updated:** January 18, 2026
+**Last Updated:** January 19, 2026
 
 ## Project Purpose
 
@@ -234,6 +234,43 @@ data/               → Static data (default schemas)
 - [ ] Embedded mode (iframe in other apps)
 - [ ] Plugin system for custom visualizations
 
+### Business Outcomes & Data Quality Traceability (NEW - January 2026)
+
+Major feature initiative to connect data quality to business value:
+
+```
+Business Outcome → Process Area → KPI/Metric → Critical Data Element → DQ Rule
+```
+
+**Phase 1: Foundation**
+- [ ] Define TypeScript interfaces for Outcome, ProcessArea, KPI, CDE, DQRule
+- [ ] Add entities to Zustand store with CRUD operations
+- [ ] Create "Business Outcomes" nav item with list view
+- [ ] Manual entry forms for all entities
+- [ ] Seed sample outcomes/KPIs for demo flows
+
+**Phase 2: Linking**
+- [ ] Link CDEs to existing bundle columns
+- [ ] Show CDE context in tabular profiling view
+- [ ] Basic traceability graph visualization
+
+**Phase 3: DQ Integration**
+- [ ] Execute simple DQ rules against linked datasets
+- [ ] Display DQ results in KPI context
+- [ ] Aggregate DQ scores by KPI and Outcome
+- [ ] Weighted rollups using traceability links
+
+**Phase 4: Import/Export**
+- [ ] Import KPI definitions from CSV/JSON
+- [ ] Import process area templates (SAP, etc.)
+
+**Direction (B + C)**
+- Annotation layer in existing views for lightweight tagging
+- Dedicated Outcome Model workspace for full traceability
+- Same entities and links power both experiences
+
+See `docs/BUSINESS_OUTCOMES_DESIGN.md` for full design.
+
 ## Development Notes
 
 ### Testing Approach
@@ -265,4 +302,4 @@ These mirror real-world data structures from ERP systems.
 
 ---
 
-*Last updated: January 18, 2026 by Pedro Cardoso*
+*Last updated: January 19, 2026 by Pedro Cardoso*

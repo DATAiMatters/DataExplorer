@@ -227,10 +227,155 @@ export interface LineageEdge {
 }
 
 // ============================================
+// BUSINESS OUTCOMES TYPES
+// ============================================
+
+export type OutcomeCategory = 'financial' | 'operational' | 'compliance' | 'customer' | 'safety';
+export type EntityStatus = 'draft' | 'active' | 'deprecated';
+export type KPIDirection = 'higher_is_better' | 'lower_is_better' | 'target_range';
+export type KPIFrequency = 'real-time' | 'daily' | 'weekly' | 'monthly' | 'quarterly';
+export type CDEDataType = 'string' | 'number' | 'date' | 'boolean';
+export type DQRuleType =
+  | 'completeness'
+  | 'validity'
+  | 'consistency'
+  | 'timeliness'
+  | 'uniqueness'
+  | 'accuracy';
+export type DQSeverity = 'critical' | 'major' | 'minor';
+export type ExecutionEngine = 'none' | 'sql' | 'great_expectations' | 'custom';
+export type TraceLinkType =
+  | 'outcome_kpi'
+  | 'kpi_cde'
+  | 'cde_rule'
+  | 'outcome_process'
+  | 'process_kpi';
+export type TraceImpactType = 'cost' | 'risk' | 'availability' | 'compliance' | 'experience';
+
+export interface BusinessOutcome {
+  id: string;
+  name: string;
+  description: string;
+  category: OutcomeCategory;
+  owner?: string;
+  targetValue?: string;
+  status?: EntityStatus;
+  tags?: string[];
+  processAreaIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProcessArea {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  owner?: string;
+  subProcesses: SubProcess[];
+}
+
+export interface SubProcess {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  owner?: string;
+  kpiIds: string[];
+}
+
+export interface KPI {
+  id: string;
+  name: string;
+  description: string;
+  formula?: string;
+  unit: string;
+  direction: KPIDirection;
+  targetValue?: number;
+  warningThreshold?: number;
+  criticalThreshold?: number;
+  frequency: KPIFrequency;
+  owner?: string;
+  status?: EntityStatus;
+  calculationWindow?: string;
+  outcomeIds: string[];
+  processAreaId?: string;
+  cdeIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CriticalDataElement {
+  id: string;
+  name: string;
+  description: string;
+  dataType: CDEDataType;
+  businessDefinition: string;
+  sourceSystem?: string;
+  sourceTable?: string;
+  sourceColumn?: string;
+  owner?: string;
+  status?: EntityStatus;
+  bundleId?: string;
+  columnName?: string;
+  kpiIds: string[];
+  dqRuleIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DataQualityRule {
+  id: string;
+  name: string;
+  description: string;
+  cdeId: string;
+  ruleType: DQRuleType;
+  expression?: string;
+  expectedPattern?: string;
+  referenceDataset?: string;
+  executionEngine?: ExecutionEngine;
+  status?: EntityStatus;
+  severity: DQSeverity;
+  passThreshold: number;
+  isExecutable: boolean;
+  lastRunDate?: string;
+  lastRunResult?: {
+    totalRecords: number;
+    passedRecords: number;
+    failedRecords: number;
+    passRate: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TraceLink {
+  id: string;
+  fromId: string;
+  toId: string;
+  linkType: TraceLinkType;
+  rationale?: string;
+  impactType?: TraceImpactType;
+  weight?: number;
+  confidence?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
 // UI STATE TYPES
 // ============================================
 
-export type ViewMode = 'bundles' | 'schemas' | 'explorer' | 'relationship-types' | 'joins' | 'lineage' | 'ai-settings' | 'journal';
+export type ViewMode =
+  | 'bundles'
+  | 'schemas'
+  | 'explorer'
+  | 'relationship-types'
+  | 'joins'
+  | 'lineage'
+  | 'ai-settings'
+  | 'journal'
+  | 'business-outcomes';
 
 export interface ExplorerState {
   selectedBundleId: string | null;
