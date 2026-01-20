@@ -19,6 +19,7 @@ interface Props {
 
 // Performance thresholds
 const LAYOUT_ITERATION_LIMIT = 100;
+const SKIP_AUTO_LAYOUT_THRESHOLD = 50000; // Skip auto-layout for very large graphs
 
 export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,6 +32,8 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
   const [layoutRunning, setLayoutRunning] = useState(false);
   const [layoutProgress, setLayoutProgress] = useState(0);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [graphReady, setGraphReady] = useState(false);
+  const [buildingGraph, setBuildingGraph] = useState(false);
 
   const relationshipTypeConfig = useAppStore((s) => s.relationshipTypeConfig);
 
@@ -99,9 +102,11 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
     return byCategory;
   }, [relationshipTypes, relationshipTypeConfig]);
 
-  // Build the graphology graph
-  const buildGraph = useCallback(() => {
+  // Build the graphology graph asynchronously for large graphs
+  const buildGraphAsync = useCallback(async (): Promise<Graph> => {
     const graph = new Graph();
+    const nodeCount = networkData.nodes.length;
+    const edgeCount = networkData.edges.length;
 
     // Calculate node degrees for sizing
     const nodeDegrees = new Map<string, number>();
@@ -111,40 +116,68 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
     }
     const maxDegree = Math.max(...Array.from(nodeDegrees.values()), 1);
 
-    // Add nodes with random initial positions
-    const width = containerRef.current?.clientWidth || 1000;
-    const height = containerRef.current?.clientHeight || 600;
+    // Use circular layout for initial positions (better than random for large graphs)
+    const radius = Math.min(1000, Math.sqrt(nodeCount) * 10);
+    const centerX = 500;
+    const centerY = 500;
 
-    networkData.nodes.forEach((node) => {
-      const degree = nodeDegrees.get(node.id) || 0;
-      const size = 3 + (degree / maxDegree) * 12; // Size 3-15 based on degree
+    // Add nodes in batches to avoid blocking UI
+    const BATCH_SIZE = 5000;
+    for (let i = 0; i < nodeCount; i += BATCH_SIZE) {
+      const batch = networkData.nodes.slice(i, i + BATCH_SIZE);
 
-      graph.addNode(node.id, {
-        label: node.label,
-        x: Math.random() * width,
-        y: Math.random() * height,
-        size,
-        color: node.group ? groupColors.get(node.group) || '#6366f1' : '#6366f1',
-        // Store original data for hover
-        originalNode: node,
-      });
-    });
+      batch.forEach((node, batchIndex) => {
+        const globalIndex = i + batchIndex;
+        const angle = (globalIndex / nodeCount) * 2 * Math.PI;
+        const degree = nodeDegrees.get(node.id) || 0;
+        const size = 3 + (degree / maxDegree) * 12;
 
-    // Add edges
-    networkData.edges.forEach((edge, index) => {
-      if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
-        const relType = edge.relationshipType
-          ? getRelationshipType(relationshipTypeConfig, edge.relationshipType)
-          : null;
-
-        graph.addEdge(edge.source, edge.target, {
-          id: `edge-${index}`,
-          size: Math.sqrt(edge.weight || 1),
-          color: relType?.color || '#404040',
-          type: 'arrow',
+        // Circular layout with some randomness
+        const r = radius * (0.3 + 0.7 * Math.random());
+        graph.addNode(node.id, {
+          label: node.label,
+          x: centerX + r * Math.cos(angle),
+          y: centerY + r * Math.sin(angle),
+          size,
+          color: node.group ? groupColors.get(node.group) || '#6366f1' : '#6366f1',
+          originalNode: node,
         });
+      });
+
+      // Yield to UI thread
+      if (i + BATCH_SIZE < nodeCount) {
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
-    });
+    }
+
+    // Add edges in batches
+    for (let i = 0; i < edgeCount; i += BATCH_SIZE) {
+      const batch = networkData.edges.slice(i, i + BATCH_SIZE);
+
+      batch.forEach((edge, batchIndex) => {
+        if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
+          const relType = edge.relationshipType
+            ? getRelationshipType(relationshipTypeConfig, edge.relationshipType)
+            : null;
+
+          try {
+            graph.addEdge(edge.source, edge.target, {
+              id: `edge-${i + batchIndex}`,
+              size: Math.sqrt(edge.weight || 1),
+              color: relType?.color || '#404040',
+              type: 'arrow',
+            });
+          } catch {
+            // Skip duplicate edges
+          }
+        }
+      });
+
+      // Yield to UI thread
+      if (i + BATCH_SIZE < edgeCount) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
 
     return graph;
   }, [networkData, groupColors, relationshipTypeConfig]);
@@ -208,43 +241,64 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
   useEffect(() => {
     if (!containerRef.current || networkData.nodes.length === 0) return;
 
-    // Build graph
-    const graph = buildGraph();
-    graphRef.current = graph;
+    let cancelled = false;
+    setBuildingGraph(true);
+    setGraphReady(false);
 
-    // Create Sigma instance
-    const sigma = new Sigma(graph, containerRef.current, {
-      renderEdgeLabels: false,
-      enableEdgeEvents: false,
-      defaultNodeColor: '#6366f1',
-      defaultEdgeColor: '#404040',
-      labelColor: { color: '#a1a1aa' },
-      labelSize: 12,
-      labelRenderedSizeThreshold: 6,
-      zIndex: true,
-    });
+    const initGraph = async () => {
+      // Build graph asynchronously
+      const graph = await buildGraphAsync();
 
-    sigmaRef.current = sigma;
+      if (cancelled) {
+        return;
+      }
 
-    // Handle node hover
-    sigma.on('enterNode', ({ node }) => {
-      const attrs = graph.getNodeAttributes(node);
-      setHoveredNode(attrs.originalNode as NetworkNode);
-    });
+      graphRef.current = graph;
 
-    sigma.on('leaveNode', () => {
-      setHoveredNode(null);
-    });
+      // Create Sigma instance
+      const sigma = new Sigma(graph, containerRef.current!, {
+        renderEdgeLabels: false,
+        enableEdgeEvents: false,
+        defaultNodeColor: '#6366f1',
+        defaultEdgeColor: '#404040',
+        labelColor: { color: '#a1a1aa' },
+        labelSize: 12,
+        labelRenderedSizeThreshold: 6,
+        zIndex: true,
+      });
 
-    // Run initial layout
-    runLayout();
+      sigmaRef.current = sigma;
+      setBuildingGraph(false);
+      setGraphReady(true);
+
+      // Handle node hover
+      sigma.on('enterNode', ({ node }) => {
+        const attrs = graph.getNodeAttributes(node);
+        setHoveredNode(attrs.originalNode as NetworkNode);
+      });
+
+      sigma.on('leaveNode', () => {
+        setHoveredNode(null);
+      });
+
+      // Only auto-run layout for smaller graphs
+      // Very large graphs start with circular layout and user can manually trigger force layout
+      if (networkData.nodes.length < SKIP_AUTO_LAYOUT_THRESHOLD) {
+        runLayout();
+      }
+    };
+
+    initGraph();
 
     return () => {
-      sigma.kill();
-      sigmaRef.current = null;
+      cancelled = true;
+      if (sigmaRef.current) {
+        sigmaRef.current.kill();
+        sigmaRef.current = null;
+      }
       graphRef.current = null;
     };
-  }, [networkData, buildGraph, runLayout]);
+  }, [networkData, buildGraphAsync, runLayout]);
 
   const handleZoom = (direction: 'in' | 'out' | 'reset') => {
     if (!sigmaRef.current) return;
@@ -262,6 +316,26 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-zinc-500">No network data available. Check your column mappings.</p>
+      </div>
+    );
+  }
+
+  // Show loading state while building graph
+  if (buildingGraph || !graphReady) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4">
+        <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
+        <div className="text-center">
+          <p className="text-zinc-300 font-medium">Building graph...</p>
+          <p className="text-zinc-500 text-sm mt-1">
+            {stats.nodeCount.toLocaleString()} nodes, {stats.edgeCount.toLocaleString()} edges
+          </p>
+          {stats.nodeCount > SKIP_AUTO_LAYOUT_THRESHOLD && (
+            <p className="text-amber-500 text-xs mt-2">
+              Large graph detected. Layout will be circular initially.
+            </p>
+          )}
+        </div>
       </div>
     );
   }
@@ -290,6 +364,11 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
           </Badge>
           <Badge variant="secondary" className="bg-zinc-800 text-zinc-400">{stats.nodeCount.toLocaleString()} nodes</Badge>
           <Badge variant="secondary" className="bg-zinc-800 text-zinc-400">{stats.edgeCount.toLocaleString()} edges</Badge>
+          {stats.nodeCount >= SKIP_AUTO_LAYOUT_THRESHOLD && (
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20">
+              Circular layout (click Run Layout for force-directed)
+            </Badge>
+          )}
           {onSwitchToSVG && stats.nodeCount < 5000 && (
             <Button
               size="sm"
