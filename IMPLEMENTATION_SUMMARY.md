@@ -63,12 +63,19 @@ Business Outcome → Process Area → KPI → Critical Data Element → Data Qua
 
 ### UI Components
 - **`src/components/app/BusinessOutcomes.tsx`** (new, enhanced)
-  - Tabbed UI for Outcomes, KPIs, CDEs, DQ Rules
+  - Tabbed UI for Outcomes, KPIs, CDEs, DQ Rules + Canvas
   - Create + Edit dialogs for all entity types
   - Dropdown menus with Edit/Link/Delete actions
   - Link dialog for entity associations
   - Inline badge-based unlink functionality
   - Empty states
+- **`src/components/app/visualizations/OutcomeCanvas.tsx`** (new)
+  - Force-directed D3 graph visualization
+  - Color-coded nodes by entity type
+  - Directed edges with arrows
+  - Zoom/pan/reset controls
+  - Hover tooltips and legend
+  - Interactive dragging
 - **`src/components/app/Sidebar.tsx`**
   - Added nav item for Business Outcomes
 - **`src/components/app/AppLayout.tsx`**
@@ -94,9 +101,19 @@ Business Outcome → Process Area → KPI → Critical Data Element → Data Qua
 - Bidirectional link management
 - Unlink via clickable badges
 
+**Completed in Phase 2 (Claude Opus 4.5):**
+- Outcome Canvas: Force-directed D3 graph visualization
+- Color-coded nodes by type (outcome/kpi/cde/rule)
+- Directed edges with arrows showing relationships
+- Zoom/pan controls with reset functionality
+- Hover tooltips showing entity details
+- Legend panel explaining node types
+- Interactive node dragging
+- Configurable link/charge strength sliders
+
 **Next logical steps:**
 1. ~~Add edit flows + inline linking (Outcome ↔ KPI ↔ CDE ↔ Rule)~~ ✅ DONE
-2. Add Outcome Canvas (traceability graph visualization)
+2. ~~Add Outcome Canvas (traceability graph visualization)~~ ✅ DONE
 3. Add column-level "Mark as CDE" annotations in profiling view
 
 

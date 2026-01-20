@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Target, Trash2, Pencil, Link2, MoreVertical, Unlink } from 'lucide-react';
+import { Plus, Target, Trash2, Pencil, Link2, MoreVertical, Unlink, Network } from 'lucide-react';
+import { OutcomeCanvas } from './visualizations/OutcomeCanvas';
 import type {
   BusinessOutcome,
   CriticalDataElement,
@@ -581,6 +582,10 @@ export function BusinessOutcomes() {
           <TabsTrigger value="kpis">KPIs</TabsTrigger>
           <TabsTrigger value="cdes">CDEs</TabsTrigger>
           <TabsTrigger value="rules">DQ Rules</TabsTrigger>
+          <TabsTrigger value="canvas">
+            <Network className="w-4 h-4 mr-1" />
+            Canvas
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="outcomes" className="flex-1 mt-4">
@@ -1563,6 +1568,12 @@ export function BusinessOutcomes() {
               </div>
             )}
           </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="canvas" className="flex-1 mt-4">
+          <div className="h-full min-h-[600px]">
+            <OutcomeCanvas />
+          </div>
         </TabsContent>
       </Tabs>
 
