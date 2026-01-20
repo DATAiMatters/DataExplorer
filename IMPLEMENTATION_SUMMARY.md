@@ -111,9 +111,18 @@ Business Outcome → Process Area → KPI → Critical Data Element → Data Qua
 - Interactive node dragging
 - Configurable link/charge strength sliders
 
+**Completed in Phase 3 (Claude Opus 4.5):**
+- Column-level "Mark as CDE" button in profiling view
+- Visual indicator (amber ring + badge) for columns already marked as CDE
+- Dialog to configure CDE name, description, business definition, data type
+- Optional linking to KPIs during CDE creation
+- Auto-populates source system, table, and column from bundle context
+- Shows linked KPI count on existing CDE indicator
+
 **Next logical steps:**
 1. ~~Add edit flows + inline linking (Outcome ↔ KPI ↔ CDE ↔ Rule)~~ ✅ DONE
 2. ~~Add Outcome Canvas (traceability graph visualization)~~ ✅ DONE
+3. ~~Add column-level "Mark as CDE" annotations in profiling view~~ ✅ DONE
 3. Add column-level "Mark as CDE" annotations in profiling view
 
 
