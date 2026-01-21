@@ -15,6 +15,7 @@ interface LayeredNode {
   type: NodeType;
   layer: LayerIndex;
   entity: BusinessOutcome | KPI | CriticalDataElement | DataQualityRule;
+  dqScore: number | null;
   x?: number;
   y?: number;
   columnIndex?: number;
@@ -47,6 +48,14 @@ const layerColors: Record<LayerIndex, string> = {
   3: 'rgba(139, 92, 246, 0.08)', // violet
 };
 
+// DQ health score colors
+const getDqHealthColor = (score: number | null): string => {
+  if (score === null) return '#52525b'; // zinc-600 - not run
+  if (score >= 80) return '#10b981';    // emerald-500 - healthy
+  if (score >= 60) return '#f59e0b';    // amber-500 - warning
+  return '#ef4444';                      // red-500 - critical
+};
+
 export function OutcomeLineage() {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,6 +86,29 @@ export function OutcomeLineage() {
     return () => observer.disconnect();
   }, []);
 
+  // Helper to calculate DQ score for a CDE based on its rules
+  const calculateCdeDqScore = (cdeId: string): number | null => {
+    const cdeRules = dqRules.filter((r) => r.cdeId === cdeId && r.lastRunResult);
+    if (cdeRules.length === 0) return null;
+    return cdeRules.reduce((sum, r) => sum + (r.lastRunResult?.passRate || 0), 0) / cdeRules.length;
+  };
+
+  // Helper to calculate DQ score for a KPI based on linked CDEs
+  const calculateKpiDqScore = (kpiId: string): number | null => {
+    const kpiCdes = cdes.filter((cde) => cde.kpiIds.includes(kpiId));
+    const scores = kpiCdes.map((cde) => calculateCdeDqScore(cde.id)).filter((s): s is number => s !== null);
+    if (scores.length === 0) return null;
+    return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  };
+
+  // Helper to calculate DQ score for an Outcome based on linked KPIs
+  const calculateOutcomeDqScore = (outcomeId: string): number | null => {
+    const outcomeKpis = kpis.filter((kpi) => kpi.outcomeIds.includes(outcomeId));
+    const scores = outcomeKpis.map((kpi) => calculateKpiDqScore(kpi.id)).filter((s): s is number => s !== null);
+    if (scores.length === 0) return null;
+    return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  };
+
   // Build layered graph data
   const graphData = useMemo(() => {
     const nodes: LayeredNode[] = [];
@@ -91,6 +123,7 @@ export function OutcomeLineage() {
         type: 'outcome',
         layer: 0,
         entity: outcome,
+        dqScore: calculateOutcomeDqScore(outcome.id),
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -104,6 +137,7 @@ export function OutcomeLineage() {
         type: 'kpi',
         layer: 1,
         entity: kpi,
+        dqScore: calculateKpiDqScore(kpi.id),
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -129,6 +163,7 @@ export function OutcomeLineage() {
         type: 'cde',
         layer: 2,
         entity: cde,
+        dqScore: calculateCdeDqScore(cde.id),
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -148,12 +183,14 @@ export function OutcomeLineage() {
 
     // Layer 3: Rules
     for (const rule of dqRules) {
+      const ruleScore = rule.lastRunResult?.passRate ?? null;
       const node: LayeredNode = {
         id: `rule-${rule.id}`,
         label: rule.name,
         type: 'rule',
         layer: 3,
         entity: rule,
+        dqScore: ruleScore,
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -396,9 +433,30 @@ export function OutcomeLineage() {
       .attr('fill', '#e4e4e7')
       .attr('font-size', '11px')
       .text((d) => {
-        const maxLen = 14;
+        const maxLen = 12; // Shorter to make room for DQ indicator
         return d.label.length > maxLen ? d.label.slice(0, maxLen - 1) + '...' : d.label;
       });
+
+    // DQ health indicator (small circle on right side)
+    nodeGroups.append('circle')
+      .attr('cx', nodeWidth - 14)
+      .attr('cy', nodeHeight / 2)
+      .attr('r', 6)
+      .attr('fill', (d) => getDqHealthColor(d.dqScore))
+      .attr('stroke', '#18181b')
+      .attr('stroke-width', 1.5)
+      .attr('opacity', (d) => d.dqScore !== null ? 1 : 0.5);
+
+    // DQ score text (only if score exists)
+    nodeGroups.append('text')
+      .attr('x', nodeWidth - 14)
+      .attr('y', nodeHeight / 2)
+      .attr('dy', '0.35em')
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#18181b')
+      .attr('font-size', '7px')
+      .attr('font-weight', 'bold')
+      .text((d) => d.dqScore !== null ? Math.round(d.dqScore) : '');
 
     // Initial zoom to fit
     const bounds = g.node()?.getBBox();
@@ -491,9 +549,25 @@ export function OutcomeLineage() {
         {/* Hover Panel */}
         {hoveredNode && (
           <div className="absolute top-4 right-4 bg-zinc-900/95 border border-zinc-800 rounded-lg p-4 max-w-xs z-10">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors[hoveredNode.type] }} />
-              <Badge variant="outline" className="text-xs">{hoveredNode.type.toUpperCase()}</Badge>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors[hoveredNode.type] }} />
+                <Badge variant="outline" className="text-xs">{hoveredNode.type.toUpperCase()}</Badge>
+              </div>
+              {hoveredNode.dqScore !== null && (
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${
+                    hoveredNode.dqScore >= 80
+                      ? 'border-emerald-500/50 text-emerald-400'
+                      : hoveredNode.dqScore >= 60
+                      ? 'border-amber-500/50 text-amber-400'
+                      : 'border-red-500/50 text-red-400'
+                  }`}
+                >
+                  DQ: {Math.round(hoveredNode.dqScore)}%
+                </Badge>
+              )}
             </div>
             <div className="font-medium text-zinc-200 mb-1">{hoveredNode.label}</div>
             {hoveredNode.type === 'outcome' && (
@@ -521,6 +595,15 @@ export function OutcomeLineage() {
                   <Badge variant="outline" className="text-xs mr-1">{(hoveredNode.entity as DataQualityRule).ruleType}</Badge>
                   <Badge variant="outline" className="text-xs">{(hoveredNode.entity as DataQualityRule).severity}</Badge>
                 </div>
+                {(hoveredNode.entity as DataQualityRule).lastRunResult && (
+                  <div className="mt-2 pt-2 border-t border-zinc-700">
+                    <div className="text-zinc-500">Last Run:</div>
+                    <div className="flex gap-3 mt-1">
+                      <span className="text-emerald-400">{(hoveredNode.entity as DataQualityRule).lastRunResult!.passedRecords.toLocaleString()} passed</span>
+                      <span className="text-red-400">{(hoveredNode.entity as DataQualityRule).lastRunResult!.failedRecords.toLocaleString()} failed</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

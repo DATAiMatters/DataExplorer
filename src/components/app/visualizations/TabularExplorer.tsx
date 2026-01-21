@@ -179,8 +179,11 @@ function ProfileCard({ profile, totalRows, bundle }: { profile: TabularProfile; 
   const cdes = useAppStore((s) => s.cdes);
   const addCDE = useAppStore((s) => s.addCDE);
   const kpis = useAppStore((s) => s.kpis);
+  const dqRules = useAppStore((s) => s.dqRules);
+  const outcomes = useAppStore((s) => s.businessOutcomes);
 
   const [showIssues, setShowIssues] = useState(false);
+  const [showCdeDetails, setShowCdeDetails] = useState(false);
   const [isExplaining, setIsExplaining] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanation, setExplanation] = useState('');
@@ -481,19 +484,31 @@ function ProfileCard({ profile, totalRows, bundle }: { profile: TabularProfile; 
         {/* Mark as CDE section */}
         <div className="pt-2 border-t border-zinc-800">
           {existingCde ? (
-            <div className="flex items-center justify-between p-2 rounded bg-amber-500/10 border border-amber-500/20">
-              <div className="flex items-center gap-2">
-                <Database className="w-4 h-4 text-amber-400" />
-                <div>
-                  <div className="text-xs font-medium text-amber-300">{existingCde.name}</div>
-                  <div className="text-[10px] text-amber-400/70">Critical Data Element</div>
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowCdeDetails(!showCdeDetails)}
+                className="w-full flex items-center justify-between p-2 rounded bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-amber-400" />
+                  <div className="text-left">
+                    <div className="text-xs font-medium text-amber-300">{existingCde.name}</div>
+                    <div className="text-[10px] text-amber-400/70">Critical Data Element</div>
+                  </div>
                 </div>
-              </div>
-              {existingCde.kpiIds.length > 0 && (
-                <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">
-                  <Link2 className="w-2.5 h-2.5 mr-1" />
-                  {existingCde.kpiIds.length} KPI{existingCde.kpiIds.length !== 1 ? 's' : ''}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  {existingCde.kpiIds.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">
+                      <Link2 className="w-2.5 h-2.5 mr-1" />
+                      {existingCde.kpiIds.length} KPI{existingCde.kpiIds.length !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                  {showCdeDetails ? <ChevronDown className="w-3 h-3 text-amber-400" /> : <ChevronRight className="w-3 h-3 text-amber-400" />}
+                </div>
+              </button>
+
+              {showCdeDetails && (
+                <CDEContextPanel cde={existingCde} kpis={kpis} dqRules={dqRules} outcomes={outcomes} />
               )}
             </div>
           ) : (
@@ -618,5 +633,154 @@ function ProfileCard({ profile, totalRows, bundle }: { profile: TabularProfile; 
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+interface CDEContextPanelProps {
+  cde: CriticalDataElement;
+  kpis: import('@/types').KPI[];
+  dqRules: import('@/types').DataQualityRule[];
+  outcomes: import('@/types').BusinessOutcome[];
+}
+
+function CDEContextPanel({ cde, kpis, dqRules, outcomes }: CDEContextPanelProps) {
+  // Get linked KPIs
+  const linkedKpis = kpis.filter((kpi) => cde.kpiIds.includes(kpi.id));
+
+  // Get DQ rules for this CDE
+  const linkedRules = dqRules.filter((rule) => rule.cdeId === cde.id);
+
+  // Get outcomes through KPIs
+  const linkedOutcomeIds = new Set(linkedKpis.flatMap((kpi) => kpi.outcomeIds));
+  const linkedOutcomes = outcomes.filter((o) => linkedOutcomeIds.has(o.id));
+
+  // Calculate overall DQ score from linked rules
+  const rulesWithResults = linkedRules.filter((r) => r.lastRunResult);
+  const avgPassRate = rulesWithResults.length > 0
+    ? rulesWithResults.reduce((sum, r) => sum + (r.lastRunResult?.passRate || 0), 0) / rulesWithResults.length
+    : null;
+
+  return (
+    <div className="space-y-3 p-2 bg-zinc-800/50 rounded-lg border border-zinc-700">
+      {/* Business Definition */}
+      {cde.businessDefinition && (
+        <div>
+          <div className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Business Definition</div>
+          <p className="text-xs text-zinc-300">{cde.businessDefinition}</p>
+        </div>
+      )}
+
+      {/* Linked Outcomes */}
+      {linkedOutcomes.length > 0 && (
+        <div>
+          <div className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">
+            Linked Outcomes ({linkedOutcomes.length})
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {linkedOutcomes.map((outcome) => (
+              <Badge
+                key={outcome.id}
+                variant="outline"
+                className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+              >
+                {outcome.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Linked KPIs */}
+      {linkedKpis.length > 0 && (
+        <div>
+          <div className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">
+            Linked KPIs ({linkedKpis.length})
+          </div>
+          <div className="space-y-1">
+            {linkedKpis.map((kpi) => (
+              <div
+                key={kpi.id}
+                className="flex items-center justify-between p-1.5 rounded bg-blue-500/10 border border-blue-500/20"
+              >
+                <span className="text-xs text-blue-300 truncate">{kpi.name}</span>
+                <Badge variant="outline" className="text-[9px] border-blue-500/30 text-blue-400">
+                  {kpi.frequency}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* DQ Rules */}
+      {linkedRules.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[10px] text-zinc-500 uppercase tracking-wide">
+              DQ Rules ({linkedRules.length})
+            </div>
+            {avgPassRate !== null && (
+              <Badge
+                variant="outline"
+                className={`text-[10px] ${
+                  avgPassRate >= 95
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : avgPassRate >= 80
+                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    : 'bg-red-500/10 text-red-400 border-red-500/20'
+                }`}
+              >
+                <ShieldCheck className="w-2.5 h-2.5 mr-1" />
+                {avgPassRate.toFixed(1)}% avg
+              </Badge>
+            )}
+          </div>
+          <div className="space-y-1">
+            {linkedRules.map((rule) => {
+              const hasResult = rule.lastRunResult !== undefined;
+              const passRate = rule.lastRunResult?.passRate || 0;
+              const statusColor = !hasResult
+                ? 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
+                : passRate >= rule.passThreshold
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                : passRate >= rule.passThreshold * 0.9
+                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                : 'bg-red-500/10 border-red-500/20 text-red-400';
+
+              return (
+                <div
+                  key={rule.id}
+                  className={`flex items-center justify-between p-1.5 rounded border ${statusColor}`}
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Badge variant="outline" className="text-[9px] shrink-0">
+                      {rule.ruleType}
+                    </Badge>
+                    <span className="text-xs truncate">{rule.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {hasResult ? (
+                      <>
+                        <span className="text-[10px]">{passRate.toFixed(1)}%</span>
+                        <span className="text-[9px] text-zinc-500">/ {rule.passThreshold}%</span>
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-zinc-500">Not run</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* No links message */}
+      {linkedKpis.length === 0 && linkedRules.length === 0 && (
+        <div className="text-xs text-zinc-500 text-center py-2">
+          No KPIs or DQ rules linked to this CDE yet.
+        </div>
+      )}
+    </div>
   );
 }

@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Target, Trash2, Pencil, Link2, MoreVertical, Unlink, Network } from 'lucide-react';
+import { Plus, Target, Trash2, Pencil, Link2, MoreVertical, Unlink, Network, ShieldCheck, Play } from 'lucide-react';
 import { OutcomeCanvas } from './visualizations/OutcomeCanvas';
 import type {
   BusinessOutcome,
@@ -65,6 +65,7 @@ export function BusinessOutcomes() {
   const kpis = useAppStore((s) => s.kpis);
   const cdes = useAppStore((s) => s.cdes);
   const dqRules = useAppStore((s) => s.dqRules);
+  const bundles = useAppStore((s) => s.bundles);
   const addOutcome = useAppStore((s) => s.addBusinessOutcome);
   const deleteOutcome = useAppStore((s) => s.deleteBusinessOutcome);
   const addKPI = useAppStore((s) => s.addKPI);
@@ -77,6 +78,15 @@ export function BusinessOutcomes() {
   const updateKPI = useAppStore((s) => s.updateKPI);
   const updateCDE = useAppStore((s) => s.updateCDE);
   const updateDQRule = useAppStore((s) => s.updateDQRule);
+
+  // Calculate overall DQ health score
+  const dqHealthScore = useMemo(() => {
+    const rulesWithResults = dqRules.filter((r) => r.lastRunResult);
+    if (rulesWithResults.length === 0) return null;
+    return rulesWithResults.reduce((sum, r) => sum + (r.lastRunResult?.passRate || 0), 0) / rulesWithResults.length;
+  }, [dqRules]);
+
+  const rulesExecuted = dqRules.filter((r) => r.lastRunResult).length;
 
   const processAreaById = useMemo(
     () => new Map(processAreas.map((area) => [area.id, area])),
@@ -153,6 +163,41 @@ export function BusinessOutcomes() {
   const [ruleReferenceDataset, setRuleReferenceDataset] = useState('');
   const [ruleEngine, setRuleEngine] = useState<ExecutionEngine>('none');
   const [ruleStatus, setRuleStatus] = useState<EntityStatus>('active');
+  const [isRunningRules, setIsRunningRules] = useState(false);
+
+  // Import the rule execution engine
+  const runAllDQRules = async () => {
+    setIsRunningRules(true);
+    try {
+      const { executeRule } = await import('@/lib/dqRuleEngine');
+
+      for (const rule of dqRules) {
+        // Find the CDE for this rule
+        const cde = cdes.find((c) => c.id === rule.cdeId);
+        if (!cde || !cde.bundleId || !cde.columnName) continue;
+
+        // Find the bundle
+        const bundle = bundles.find((b) => b.id === cde.bundleId);
+        if (!bundle) continue;
+
+        // Execute the rule
+        const result = executeRule({ bundle, cde, rule });
+
+        // Update the rule with the result
+        updateDQRule(rule.id, {
+          lastRunDate: result.executedAt,
+          lastRunResult: {
+            totalRecords: result.totalRecords,
+            passedRecords: result.passedRecords,
+            failedRecords: result.failedRecords,
+            passRate: result.passRate,
+          },
+        });
+      }
+    } finally {
+      setIsRunningRules(false);
+    }
+  };
 
   const resetOutcomeForm = () => {
     setEditingOutcomeId(null);
@@ -549,7 +594,7 @@ export function BusinessOutcomes() {
         </div>
       </header>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-5">
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
             <CardDescription>Business Outcomes</CardDescription>
@@ -572,6 +617,22 @@ export function BusinessOutcomes() {
           <CardHeader className="pb-2">
             <CardDescription>DQ Rules</CardDescription>
             <CardTitle className="text-3xl">{totalRules}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className={`bg-zinc-900 border-zinc-800 ${dqHealthScore !== null ? (dqHealthScore >= 95 ? 'border-emerald-500/30' : dqHealthScore >= 80 ? 'border-amber-500/30' : 'border-red-500/30') : ''}`}>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4" />
+              DQ Health Score
+            </CardDescription>
+            {dqHealthScore !== null ? (
+              <CardTitle className={`text-3xl ${dqHealthScore >= 95 ? 'text-emerald-400' : dqHealthScore >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
+                {dqHealthScore.toFixed(1)}%
+              </CardTitle>
+            ) : (
+              <CardTitle className="text-3xl text-zinc-500">—</CardTitle>
+            )}
+            <p className="text-xs text-zinc-500">{rulesExecuted}/{totalRules} rules executed</p>
           </CardHeader>
         </Card>
       </div>
@@ -715,6 +776,20 @@ export function BusinessOutcomes() {
                   const linkedKpis = kpis.filter((kpi) => kpi.outcomeIds.includes(outcome.id));
                   const unlinkedKpis = getUnlinkedKpisForOutcome(outcome.id);
 
+                  // Calculate DQ score for outcome (aggregated from linked KPIs)
+                  const outcomeRules: DataQualityRule[] = [];
+                  for (const kpi of linkedKpis) {
+                    const kpiCdes = cdes.filter((cde) => cde.kpiIds.includes(kpi.id));
+                    for (const cde of kpiCdes) {
+                      const cdeRules = dqRules.filter((r) => r.cdeId === cde.id);
+                      outcomeRules.push(...cdeRules);
+                    }
+                  }
+                  const executedOutcomeRules = outcomeRules.filter((r) => r.lastRunResult);
+                  const outcomeDqScore = executedOutcomeRules.length > 0
+                    ? Math.round(executedOutcomeRules.reduce((sum, r) => sum + (r.lastRunResult?.passRate || 0), 0) / executedOutcomeRules.length)
+                    : null;
+
                   return (
                     <Card key={outcome.id} className="bg-zinc-900 border-zinc-800">
                       <CardHeader className="pb-3">
@@ -805,6 +880,37 @@ export function BusinessOutcomes() {
                                 #{tag}
                               </Badge>
                             ))}
+                          </div>
+                        )}
+
+                        {/* DQ Score Section */}
+                        {outcomeRules.length > 0 && (
+                          <div className="border-t border-zinc-800 pt-3 mt-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-zinc-400 flex items-center gap-1">
+                                <ShieldCheck className="w-4 h-4" />
+                                DQ Score
+                              </span>
+                              {outcomeDqScore !== null ? (
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    outcomeDqScore >= 80
+                                      ? 'border-emerald-500/50 text-emerald-400'
+                                      : outcomeDqScore >= 60
+                                      ? 'border-amber-500/50 text-amber-400'
+                                      : 'border-red-500/50 text-red-400'
+                                  }
+                                >
+                                  {outcomeDqScore}%
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-zinc-500">Not run</Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-zinc-500 mt-1">
+                              {executedOutcomeRules.length} of {outcomeRules.length} rules executed
+                            </div>
                           </div>
                         )}
                       </CardContent>
@@ -994,6 +1100,16 @@ export function BusinessOutcomes() {
                   const linkedCdes = cdes.filter((cde) => cde.kpiIds.includes(kpi.id));
                   const unlinkedCdes = getUnlinkedCdesForKpi(kpi.id);
 
+                  // Get DQ rules linked to this KPI's CDEs and calculate aggregate score
+                  const kpiRules = dqRules.filter((rule) => {
+                    const cde = cdes.find((c) => c.id === rule.cdeId);
+                    return cde && cde.kpiIds.includes(kpi.id);
+                  });
+                  const executedRules = kpiRules.filter((r) => r.lastRunResult);
+                  const kpiDqScore = executedRules.length > 0
+                    ? Math.round(executedRules.reduce((sum, r) => sum + (r.lastRunResult?.passRate || 0), 0) / executedRules.length)
+                    : null;
+
                   return (
                     <Card key={kpi.id} className="bg-zinc-900 border-zinc-800">
                       <CardHeader className="pb-3">
@@ -1090,6 +1206,54 @@ export function BusinessOutcomes() {
                             </div>
                           )}
                         </div>
+
+                        {/* DQ Score Section */}
+                        {kpiRules.length > 0 && (
+                          <div className="border-t border-zinc-800 pt-3 mt-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-zinc-400 flex items-center gap-1">
+                                <ShieldCheck className="w-4 h-4" />
+                                DQ Score
+                              </span>
+                              {kpiDqScore !== null ? (
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    kpiDqScore >= 80
+                                      ? 'border-emerald-500/50 text-emerald-400'
+                                      : kpiDqScore >= 60
+                                      ? 'border-amber-500/50 text-amber-400'
+                                      : 'border-red-500/50 text-red-400'
+                                  }
+                                >
+                                  {kpiDqScore}%
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-zinc-500">Not run</Badge>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              {kpiRules.map((rule) => (
+                                <div key={rule.id} className="flex items-center justify-between text-xs">
+                                  <span className="text-zinc-500 truncate max-w-[150px]" title={rule.name}>{rule.name}</span>
+                                  {rule.lastRunResult ? (
+                                    <span className={
+                                      rule.lastRunResult.passRate >= rule.passThreshold
+                                        ? 'text-emerald-400'
+                                        : rule.lastRunResult.passRate >= rule.passThreshold * 0.8
+                                        ? 'text-amber-400'
+                                        : 'text-red-400'
+                                    }>
+                                      {Math.round(rule.lastRunResult.passRate)}%
+                                    </span>
+                                  ) : (
+                                    <span className="text-zinc-600">--</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   );
@@ -1246,6 +1410,12 @@ export function BusinessOutcomes() {
                   const linkedRules = dqRules.filter((rule) => rule.cdeId === cde.id);
                   const unlinkedRules = getUnlinkedRulesForCde(cde.id);
 
+                  // Calculate DQ score for CDE
+                  const executedCdeRules = linkedRules.filter((r) => r.lastRunResult);
+                  const cdeDqScore = executedCdeRules.length > 0
+                    ? Math.round(executedCdeRules.reduce((sum, r) => sum + (r.lastRunResult?.passRate || 0), 0) / executedCdeRules.length)
+                    : null;
+
                   return (
                     <Card key={cde.id} className="bg-zinc-900 border-zinc-800">
                       <CardHeader className="pb-3">
@@ -1332,6 +1502,54 @@ export function BusinessOutcomes() {
                             </div>
                           )}
                         </div>
+
+                        {/* DQ Score Section */}
+                        {linkedRules.length > 0 && (
+                          <div className="border-t border-zinc-800 pt-3 mt-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-zinc-400 flex items-center gap-1">
+                                <ShieldCheck className="w-4 h-4" />
+                                DQ Score
+                              </span>
+                              {cdeDqScore !== null ? (
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    cdeDqScore >= 80
+                                      ? 'border-emerald-500/50 text-emerald-400'
+                                      : cdeDqScore >= 60
+                                      ? 'border-amber-500/50 text-amber-400'
+                                      : 'border-red-500/50 text-red-400'
+                                  }
+                                >
+                                  {cdeDqScore}%
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-zinc-500">Not run</Badge>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              {linkedRules.map((rule) => (
+                                <div key={rule.id} className="flex items-center justify-between text-xs">
+                                  <span className="text-zinc-500 truncate max-w-[150px]" title={rule.name}>{rule.name}</span>
+                                  {rule.lastRunResult ? (
+                                    <span className={
+                                      rule.lastRunResult.passRate >= rule.passThreshold
+                                        ? 'text-emerald-400'
+                                        : rule.lastRunResult.passRate >= rule.passThreshold * 0.8
+                                        ? 'text-amber-400'
+                                        : 'text-red-400'
+                                    }>
+                                      {Math.round(rule.lastRunResult.passRate)}%
+                                    </span>
+                                  ) : (
+                                    <span className="text-zinc-600">--</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   );
@@ -1347,16 +1565,35 @@ export function BusinessOutcomes() {
               <h2 className="text-lg font-semibold text-zinc-100">Data Quality Rules</h2>
               <p className="text-sm text-zinc-500">Document rules and plan execution readiness.</p>
             </div>
-            <Dialog open={isRuleDialogOpen} onOpenChange={(open) => {
-              setIsRuleDialogOpen(open);
-              if (!open) resetRuleForm();
-            }}>
-              <DialogTrigger asChild>
-                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Rule
-                </Button>
-              </DialogTrigger>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={runAllDQRules}
+                disabled={isRunningRules || dqRules.length === 0}
+                className="border-violet-500/30 hover:bg-violet-500/10"
+              >
+                {isRunningRules ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full mr-2" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2 text-violet-400" />
+                    Run All Rules
+                  </>
+                )}
+              </Button>
+              <Dialog open={isRuleDialogOpen} onOpenChange={(open) => {
+                setIsRuleDialogOpen(open);
+                if (!open) resetRuleForm();
+              }}>
+                <DialogTrigger asChild>
+                  <Button className="bg-emerald-600 hover:bg-emerald-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Rule
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-3xl bg-zinc-900 border-zinc-800">
                 <DialogHeader>
                   <DialogTitle>{editingRuleId ? 'Edit Data Quality Rule' : 'Create Data Quality Rule'}</DialogTitle>
@@ -1490,6 +1727,7 @@ export function BusinessOutcomes() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
 
           <ScrollArea className="h-[calc(100vh-360px)] pr-2">
@@ -1559,6 +1797,55 @@ export function BusinessOutcomes() {
                         {rule.expression && (
                           <div className="text-sm text-zinc-400">
                             Expression: <span className="text-zinc-200">{rule.expression}</span>
+                          </div>
+                        )}
+
+                        {/* Last Run Results */}
+                        {rule.lastRunResult ? (
+                          <div className="border-t border-zinc-800 pt-3 mt-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-zinc-400 flex items-center gap-1">
+                                <ShieldCheck className="w-4 h-4" />
+                                Last Run
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  rule.lastRunResult.passRate >= rule.passThreshold
+                                    ? 'border-emerald-500/50 text-emerald-400'
+                                    : rule.lastRunResult.passRate >= rule.passThreshold * 0.8
+                                    ? 'border-amber-500/50 text-amber-400'
+                                    : 'border-red-500/50 text-red-400'
+                                }
+                              >
+                                {Math.round(rule.lastRunResult.passRate)}% pass
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="text-center p-2 bg-zinc-800/50 rounded">
+                                <div className="text-zinc-400">Total</div>
+                                <div className="text-zinc-200 font-medium">{rule.lastRunResult.totalRecords.toLocaleString()}</div>
+                              </div>
+                              <div className="text-center p-2 bg-emerald-900/20 rounded">
+                                <div className="text-emerald-400">Passed</div>
+                                <div className="text-emerald-300 font-medium">{rule.lastRunResult.passedRecords.toLocaleString()}</div>
+                              </div>
+                              <div className="text-center p-2 bg-red-900/20 rounded">
+                                <div className="text-red-400">Failed</div>
+                                <div className="text-red-300 font-medium">{rule.lastRunResult.failedRecords.toLocaleString()}</div>
+                              </div>
+                            </div>
+                            {rule.lastRunDate && (
+                              <div className="text-xs text-zinc-500 mt-2">
+                                Last run: {new Date(rule.lastRunDate).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="border-t border-zinc-800 pt-3 mt-3">
+                            <div className="text-xs text-zinc-500 text-center py-2">
+                              Not yet executed
+                            </div>
                           </div>
                         )}
                       </CardContent>

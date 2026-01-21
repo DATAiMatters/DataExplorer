@@ -20,6 +20,9 @@ interface Props {
 // Performance thresholds
 const LAYOUT_ITERATION_LIMIT = 100;
 const SKIP_AUTO_LAYOUT_THRESHOLD = 50000; // Skip auto-layout for very large graphs
+const VERY_LARGE_GRAPH_THRESHOLD = 20000; // Threshold for optimized loading path
+const SAMPLE_THRESHOLD = 75000; // Above this, offer sampling option
+const DEFAULT_SAMPLE_SIZE = 25000; // Default sample size for very large graphs
 
 export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,10 +37,13 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [graphReady, setGraphReady] = useState(false);
   const [buildingGraph, setBuildingGraph] = useState(false);
+  const [buildPhase, setBuildPhase] = useState<'nodes' | 'edges' | 'render'>('nodes');
+  const [useSampling, setUseSampling] = useState<boolean | null>(null); // null = not decided yet
+  const [sampleSize] = useState(DEFAULT_SAMPLE_SIZE);
 
   const relationshipTypeConfig = useAppStore((s) => s.relationshipTypeConfig);
 
-  const networkData = useMemo<NetworkData>(() => {
+  const fullNetworkData = useMemo<NetworkData>(() => {
     try {
       return transformToNetwork(bundle.source, bundle.mappings);
     } catch (e) {
@@ -45,6 +51,43 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
       return { nodes: [], edges: [] };
     }
   }, [bundle]);
+
+  // Apply sampling if requested
+  const networkData = useMemo<NetworkData>(() => {
+    if (!useSampling || fullNetworkData.nodes.length <= sampleSize) {
+      return fullNetworkData;
+    }
+
+    // Sample nodes by degree (keep nodes with most connections)
+    const nodeDegrees = new Map<string, number>();
+    for (const edge of fullNetworkData.edges) {
+      nodeDegrees.set(edge.source, (nodeDegrees.get(edge.source) || 0) + 1);
+      nodeDegrees.set(edge.target, (nodeDegrees.get(edge.target) || 0) + 1);
+    }
+
+    // Sort nodes by degree and take top N
+    const sortedNodes = [...fullNetworkData.nodes].sort((a, b) => {
+      return (nodeDegrees.get(b.id) || 0) - (nodeDegrees.get(a.id) || 0);
+    });
+
+    const sampledNodes = sortedNodes.slice(0, sampleSize);
+    const sampledNodeIds = new Set(sampledNodes.map(n => n.id));
+
+    // Filter edges to only include sampled nodes
+    const sampledEdges = fullNetworkData.edges.filter(
+      edge => sampledNodeIds.has(edge.source) && sampledNodeIds.has(edge.target)
+    );
+
+    return { nodes: sampledNodes, edges: sampledEdges };
+  }, [fullNetworkData, useSampling, sampleSize]);
+
+  // Stats for the full (unsampled) data - used to decide on sampling
+  const fullStats = useMemo(() => {
+    return {
+      nodeCount: fullNetworkData.nodes.length,
+      edgeCount: fullNetworkData.edges.length,
+    };
+  }, [fullNetworkData]);
 
   const stats = useMemo(() => {
     const nodeDegrees = new Map<string, number>();
@@ -58,8 +101,11 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
       edgeCount: networkData.edges.length,
       avgDegree: degrees.length > 0 ? (degrees.reduce((a, b) => a + b, 0) / degrees.length).toFixed(1) : '0',
       maxDegree: degrees.length > 0 ? Math.max(...degrees) : 0,
+      isSampled: useSampling && fullNetworkData.nodes.length > sampleSize,
+      originalNodeCount: fullNetworkData.nodes.length,
+      originalEdgeCount: fullNetworkData.edges.length,
     };
-  }, [networkData]);
+  }, [networkData, useSampling, fullNetworkData, sampleSize]);
 
   const groups = useMemo(() => {
     return Array.from(new Set(networkData.nodes.map((n) => n.group).filter((g): g is string => Boolean(g))));
@@ -102,80 +148,132 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
     return byCategory;
   }, [relationshipTypes, relationshipTypeConfig]);
 
-  // Build the graphology graph asynchronously for large graphs
+  // Build the graphology graph - optimized for large graphs
   const buildGraphAsync = useCallback(async (): Promise<Graph> => {
     const graph = new Graph();
     const nodeCount = networkData.nodes.length;
     const edgeCount = networkData.edges.length;
+    const isVeryLarge = nodeCount > VERY_LARGE_GRAPH_THRESHOLD;
 
-    // Calculate node degrees for sizing
-    const nodeDegrees = new Map<string, number>();
-    for (const edge of networkData.edges) {
-      nodeDegrees.set(edge.source, (nodeDegrees.get(edge.source) || 0) + 1);
-      nodeDegrees.set(edge.target, (nodeDegrees.get(edge.target) || 0) + 1);
+    // Pre-calculate all node degrees in a single pass using a plain object (faster than Map for large data)
+    const nodeDegrees: Record<string, number> = {};
+    for (let i = 0; i < edgeCount; i++) {
+      const edge = networkData.edges[i];
+      nodeDegrees[edge.source] = (nodeDegrees[edge.source] || 0) + 1;
+      nodeDegrees[edge.target] = (nodeDegrees[edge.target] || 0) + 1;
     }
-    const maxDegree = Math.max(...Array.from(nodeDegrees.values()), 1);
 
-    // Use circular layout for initial positions (better than random for large graphs)
-    const radius = Math.min(1000, Math.sqrt(nodeCount) * 10);
-    const centerX = 500;
-    const centerY = 500;
+    // Find max degree
+    let maxDegree = 1;
+    for (const id in nodeDegrees) {
+      if (nodeDegrees[id] > maxDegree) maxDegree = nodeDegrees[id];
+    }
 
-    // Add nodes in batches to avoid blocking UI
-    const BATCH_SIZE = 5000;
-    for (let i = 0; i < nodeCount; i += BATCH_SIZE) {
-      const batch = networkData.nodes.slice(i, i + BATCH_SIZE);
+    // Layout parameters
+    const radius = Math.min(2000, Math.sqrt(nodeCount) * 15);
+    const centerX = 1000;
+    const centerY = 1000;
 
-      batch.forEach((node, batchIndex) => {
-        const globalIndex = i + batchIndex;
-        const angle = (globalIndex / nodeCount) * 2 * Math.PI;
-        const degree = nodeDegrees.get(node.id) || 0;
-        const size = 3 + (degree / maxDegree) * 12;
+    // For very large graphs, use pre-computed positions without randomness
+    // This is MUCH faster than calling Math.random() 100K times
+    const angleStep = (2 * Math.PI) / nodeCount;
 
-        // Circular layout with some randomness
-        const r = radius * (0.3 + 0.7 * Math.random());
+    // OPTIMIZATION: For very large graphs, add all nodes synchronously in one go
+    // The batching/yielding overhead actually slows things down more than it helps
+    if (isVeryLarge) {
+      // Add all nodes at once - much faster than batched approach
+      for (let i = 0; i < nodeCount; i++) {
+        const node = networkData.nodes[i];
+        const angle = i * angleStep;
+        const degree = nodeDegrees[node.id] || 0;
+        // Spiral layout: nodes with higher degree towards center
+        const r = radius * (0.2 + 0.8 * (1 - degree / maxDegree));
+
         graph.addNode(node.id, {
           label: node.label,
           x: centerX + r * Math.cos(angle),
           y: centerY + r * Math.sin(angle),
-          size,
+          size: 2 + (degree / maxDegree) * 8,
           color: node.group ? groupColors.get(node.group) || '#6366f1' : '#6366f1',
           originalNode: node,
         });
-      });
-
-      // Yield to UI thread
-      if (i + BATCH_SIZE < nodeCount) {
-        await new Promise(resolve => setTimeout(resolve, 0));
       }
-    }
 
-    // Add edges in batches
-    for (let i = 0; i < edgeCount; i += BATCH_SIZE) {
-      const batch = networkData.edges.slice(i, i + BATCH_SIZE);
+      // Yield once after all nodes
+      await new Promise(resolve => setTimeout(resolve, 0));
 
-      batch.forEach((edge, batchIndex) => {
-        if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
+      // Add all edges at once
+      const addedEdges = new Set<string>();
+      for (let i = 0; i < edgeCount; i++) {
+        const edge = networkData.edges[i];
+        const edgeKey = `${edge.source}-${edge.target}`;
+        if (!addedEdges.has(edgeKey) && graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
+          addedEdges.add(edgeKey);
           const relType = edge.relationshipType
             ? getRelationshipType(relationshipTypeConfig, edge.relationshipType)
             : null;
-
           try {
             graph.addEdge(edge.source, edge.target, {
-              id: `edge-${i + batchIndex}`,
-              size: Math.sqrt(edge.weight || 1),
-              color: relType?.color || '#404040',
+              size: 0.5,
+              color: relType?.color || '#303030',
               type: 'arrow',
             });
           } catch {
-            // Skip duplicate edges
+            // Skip errors
           }
         }
-      });
+      }
+    } else {
+      // Original batched approach for smaller graphs
+      const BATCH_SIZE = 5000;
 
-      // Yield to UI thread
-      if (i + BATCH_SIZE < edgeCount) {
-        await new Promise(resolve => setTimeout(resolve, 0));
+      for (let i = 0; i < nodeCount; i += BATCH_SIZE) {
+        const end = Math.min(i + BATCH_SIZE, nodeCount);
+        for (let j = i; j < end; j++) {
+          const node = networkData.nodes[j];
+          const angle = j * angleStep;
+          const degree = nodeDegrees[node.id] || 0;
+          const r = radius * (0.3 + 0.7 * Math.random());
+
+          graph.addNode(node.id, {
+            label: node.label,
+            x: centerX + r * Math.cos(angle),
+            y: centerY + r * Math.sin(angle),
+            size: 3 + (degree / maxDegree) * 12,
+            color: node.group ? groupColors.get(node.group) || '#6366f1' : '#6366f1',
+            originalNode: node,
+          });
+        }
+
+        if (end < nodeCount) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      // Add edges in batches
+      for (let i = 0; i < edgeCount; i += BATCH_SIZE) {
+        const end = Math.min(i + BATCH_SIZE, edgeCount);
+        for (let j = i; j < end; j++) {
+          const edge = networkData.edges[j];
+          if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
+            const relType = edge.relationshipType
+              ? getRelationshipType(relationshipTypeConfig, edge.relationshipType)
+              : null;
+            try {
+              graph.addEdge(edge.source, edge.target, {
+                size: Math.sqrt(edge.weight || 1),
+                color: relType?.color || '#404040',
+                type: 'arrow',
+              });
+            } catch {
+              // Skip duplicate edges
+            }
+          }
+        }
+
+        if (end < edgeCount) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
       }
     }
 
@@ -239,6 +337,8 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
 
   // Initialize Sigma
   useEffect(() => {
+    // Don't initialize until sampling decision is made for large graphs
+    if (fullNetworkData.nodes.length > SAMPLE_THRESHOLD && useSampling === null) return;
     if (!containerRef.current || networkData.nodes.length === 0) return;
 
     let cancelled = false;
@@ -246,6 +346,8 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
     setGraphReady(false);
 
     const initGraph = async () => {
+      setBuildPhase('nodes');
+
       // Build graph asynchronously
       const graph = await buildGraphAsync();
 
@@ -253,18 +355,28 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
         return;
       }
 
+      setBuildPhase('render');
+      // Give UI a chance to update
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       graphRef.current = graph;
 
-      // Create Sigma instance
+      const isVeryLarge = networkData.nodes.length > VERY_LARGE_GRAPH_THRESHOLD;
+
+      // Create Sigma instance with settings optimized for graph size
       const sigma = new Sigma(graph, containerRef.current!, {
         renderEdgeLabels: false,
         enableEdgeEvents: false,
         defaultNodeColor: '#6366f1',
         defaultEdgeColor: '#404040',
         labelColor: { color: '#a1a1aa' },
-        labelSize: 12,
-        labelRenderedSizeThreshold: 6,
-        zIndex: true,
+        labelSize: isVeryLarge ? 10 : 12,
+        // For very large graphs, only show labels when zoomed in a lot
+        labelRenderedSizeThreshold: isVeryLarge ? 12 : 6,
+        // Disable expensive features for large graphs
+        zIndex: !isVeryLarge,
+        // Reduce anti-aliasing for performance
+        allowInvalidContainer: true,
       });
 
       sigmaRef.current = sigma;
@@ -298,7 +410,7 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
       }
       graphRef.current = null;
     };
-  }, [networkData, buildGraphAsync, runLayout]);
+  }, [networkData, buildGraphAsync, runLayout, useSampling]);
 
   const handleZoom = (direction: 'in' | 'out' | 'reset') => {
     if (!sigmaRef.current) return;
@@ -320,19 +432,71 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
     );
   }
 
+  // For very large graphs, ask user if they want to sample
+  if (fullStats.nodeCount > SAMPLE_THRESHOLD && useSampling === null) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-6 p-8">
+        <div className="text-center max-w-lg">
+          <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4">
+            <Info className="w-8 h-8 text-amber-400" />
+          </div>
+          <h3 className="text-lg font-medium text-zinc-200 mb-2">Large Graph Detected</h3>
+          <p className="text-zinc-400 text-sm mb-4">
+            This graph has <span className="text-amber-400 font-medium">{fullStats.nodeCount.toLocaleString()}</span> nodes and{' '}
+            <span className="text-amber-400 font-medium">{fullStats.edgeCount.toLocaleString()}</span> edges.
+            Loading this many nodes may take a while and could affect browser performance.
+          </p>
+
+          <div className="bg-zinc-800/50 rounded-lg p-4 mb-4">
+            <p className="text-xs text-zinc-500 mb-3">Choose how to proceed:</p>
+            <div className="space-y-2">
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => {
+                  setUseSampling(true);
+                }}
+              >
+                Sample {DEFAULT_SAMPLE_SIZE.toLocaleString()} nodes (Recommended)
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-zinc-700"
+                onClick={() => {
+                  setUseSampling(false);
+                }}
+              >
+                Load all {fullStats.nodeCount.toLocaleString()} nodes (may be slow)
+              </Button>
+            </div>
+          </div>
+
+          <p className="text-xs text-zinc-500">
+            Sampling selects nodes with the most connections to preserve the graph structure.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Show loading state while building graph
   if (buildingGraph || !graphReady) {
+    const phaseText = {
+      nodes: 'Adding nodes...',
+      edges: 'Adding edges...',
+      render: 'Initializing renderer...',
+    };
+
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4">
         <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
         <div className="text-center">
-          <p className="text-zinc-300 font-medium">Building graph...</p>
+          <p className="text-zinc-300 font-medium">{phaseText[buildPhase]}</p>
           <p className="text-zinc-500 text-sm mt-1">
             {stats.nodeCount.toLocaleString()} nodes, {stats.edgeCount.toLocaleString()} edges
           </p>
-          {stats.nodeCount > SKIP_AUTO_LAYOUT_THRESHOLD && (
+          {stats.nodeCount > VERY_LARGE_GRAPH_THRESHOLD && (
             <p className="text-amber-500 text-xs mt-2">
-              Large graph detected. Layout will be circular initially.
+              Large graph - using optimized circular layout
             </p>
           )}
         </div>
@@ -364,6 +528,11 @@ export function NetworkExplorerWebGL({ bundle, onSwitchToSVG }: Props) {
           </Badge>
           <Badge variant="secondary" className="bg-zinc-800 text-zinc-400">{stats.nodeCount.toLocaleString()} nodes</Badge>
           <Badge variant="secondary" className="bg-zinc-800 text-zinc-400">{stats.edgeCount.toLocaleString()} edges</Badge>
+          {stats.isSampled && (
+            <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+              Sampled from {stats.originalNodeCount?.toLocaleString()} nodes
+            </Badge>
+          )}
           {stats.nodeCount >= SKIP_AUTO_LAYOUT_THRESHOLD && (
             <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20">
               Circular layout (click Run Layout for force-directed)

@@ -15,6 +15,7 @@ interface CanvasNode extends d3.SimulationNodeDatum {
   label: string;
   type: NodeType;
   entity: BusinessOutcome | KPI | CriticalDataElement | DataQualityRule;
+  dqScore: number | null; // DQ score 0-100, null if not computed
 }
 
 interface CanvasLink extends d3.SimulationLinkDatum<CanvasNode> {
@@ -26,6 +27,14 @@ const nodeTypeColors: Record<NodeType, string> = {
   kpi: '#3b82f6',     // blue-500
   cde: '#f59e0b',     // amber-500
   rule: '#8b5cf6',    // violet-500
+};
+
+// DQ health score colors
+const getDqHealthColor = (score: number | null): string => {
+  if (score === null) return '#52525b'; // zinc-600 - not run
+  if (score >= 80) return '#10b981';    // emerald-500 - healthy
+  if (score >= 60) return '#f59e0b';    // amber-500 - warning
+  return '#ef4444';                      // red-500 - critical
 };
 
 const edgeTypeColors: Record<string, string> = {
@@ -47,6 +56,29 @@ export function OutcomeCanvas() {
   const cdes = useAppStore((s) => s.cdes);
   const dqRules = useAppStore((s) => s.dqRules);
 
+  // Helper to calculate DQ score for a CDE based on its rules
+  const calculateCdeDqScore = (cdeId: string): number | null => {
+    const cdeRules = dqRules.filter((r) => r.cdeId === cdeId && r.lastRunResult);
+    if (cdeRules.length === 0) return null;
+    return cdeRules.reduce((sum, r) => sum + (r.lastRunResult?.passRate || 0), 0) / cdeRules.length;
+  };
+
+  // Helper to calculate DQ score for a KPI based on linked CDEs
+  const calculateKpiDqScore = (kpiId: string): number | null => {
+    const kpiCdes = cdes.filter((cde) => cde.kpiIds.includes(kpiId));
+    const scores = kpiCdes.map((cde) => calculateCdeDqScore(cde.id)).filter((s): s is number => s !== null);
+    if (scores.length === 0) return null;
+    return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  };
+
+  // Helper to calculate DQ score for an Outcome based on linked KPIs
+  const calculateOutcomeDqScore = (outcomeId: string): number | null => {
+    const outcomeKpis = kpis.filter((kpi) => kpi.outcomeIds.includes(outcomeId));
+    const scores = outcomeKpis.map((kpi) => calculateKpiDqScore(kpi.id)).filter((s): s is number => s !== null);
+    if (scores.length === 0) return null;
+    return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  };
+
   // Build graph data from business outcomes entities
   const graphData = useMemo(() => {
     const nodes: CanvasNode[] = [];
@@ -60,6 +92,7 @@ export function OutcomeCanvas() {
         label: outcome.name,
         type: 'outcome',
         entity: outcome,
+        dqScore: calculateOutcomeDqScore(outcome.id),
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -72,6 +105,7 @@ export function OutcomeCanvas() {
         label: kpi.name,
         type: 'kpi',
         entity: kpi,
+        dqScore: calculateKpiDqScore(kpi.id),
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -96,6 +130,7 @@ export function OutcomeCanvas() {
         label: cde.name,
         type: 'cde',
         entity: cde,
+        dqScore: calculateCdeDqScore(cde.id),
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -115,11 +150,14 @@ export function OutcomeCanvas() {
 
     // Add Rule nodes and links to CDEs
     for (const rule of dqRules) {
+      // Rule score is directly from lastRunResult
+      const ruleScore = rule.lastRunResult?.passRate ?? null;
       const node: CanvasNode = {
         id: `rule-${rule.id}`,
         label: rule.name,
         type: 'rule',
         entity: rule,
+        dqScore: ruleScore,
       };
       nodes.push(node);
       nodeMap.set(node.id, node);
@@ -235,6 +273,21 @@ export function OutcomeCanvas() {
       .attr('stroke-width', 2)
       .attr('marker-end', (d) => `url(#arrow-${d.type})`);
 
+    // Draw DQ health indicator rings (outer ring showing health status)
+    const healthRing = g
+      .append('g')
+      .attr('class', 'health-rings')
+      .selectAll('circle')
+      .data(nodes)
+      .enter()
+      .append('circle')
+      .attr('r', (d) => sizeScale(nodeDegrees.get(d.id) || 0) + 4)
+      .attr('fill', 'none')
+      .attr('stroke', (d) => getDqHealthColor(d.dqScore))
+      .attr('stroke-width', 3)
+      .attr('stroke-opacity', (d) => d.dqScore !== null ? 0.8 : 0.3)
+      .attr('stroke-dasharray', (d) => d.dqScore === null ? '4,2' : 'none');
+
     // Draw nodes
     const node = g
       .append('g')
@@ -296,6 +349,8 @@ export function OutcomeCanvas() {
         .attr('y1', (d) => (d.source as CanvasNode).y!)
         .attr('x2', (d) => (d.target as CanvasNode).x!)
         .attr('y2', (d) => (d.target as CanvasNode).y!);
+
+      healthRing.attr('cx', (d) => d.x!).attr('cy', (d) => d.y!);
 
       node.attr('cx', (d) => d.x!).attr('cy', (d) => d.y!);
 
@@ -461,7 +516,7 @@ export function OutcomeCanvas() {
         {/* Legend */}
         <div className="absolute bottom-4 left-4 bg-zinc-900/90 border border-zinc-800 rounded-lg p-3">
           <div className="text-xs font-medium text-zinc-400 mb-2">Node Types</div>
-          <div className="space-y-1">
+          <div className="space-y-1 mb-3">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.outcome }} />
               <span className="text-xs text-zinc-300">Outcome</span>
@@ -479,14 +534,49 @@ export function OutcomeCanvas() {
               <span className="text-xs text-zinc-300">DQ Rule</span>
             </div>
           </div>
+          <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">DQ Health (Ring)</div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#10b981' }} />
+              <span className="text-xs text-zinc-300">Healthy (≥80%)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#f59e0b' }} />
+              <span className="text-xs text-zinc-300">Warning (60-79%)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#ef4444' }} />
+              <span className="text-xs text-zinc-300">Critical (&lt;60%)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full border-2 border-dashed" style={{ borderColor: '#52525b' }} />
+              <span className="text-xs text-zinc-300">Not run</span>
+            </div>
+          </div>
         </div>
 
         {/* Hover Panel */}
         {hoveredNode && (
           <div className="absolute top-4 right-4 bg-zinc-900/95 border border-zinc-800 rounded-lg p-4 max-w-xs">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors[hoveredNode.type] }} />
-              <Badge variant="outline" className="text-xs">{hoveredNode.type.toUpperCase()}</Badge>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors[hoveredNode.type] }} />
+                <Badge variant="outline" className="text-xs">{hoveredNode.type.toUpperCase()}</Badge>
+              </div>
+              {hoveredNode.dqScore !== null && (
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${
+                    hoveredNode.dqScore >= 80
+                      ? 'border-emerald-500/50 text-emerald-400'
+                      : hoveredNode.dqScore >= 60
+                      ? 'border-amber-500/50 text-amber-400'
+                      : 'border-red-500/50 text-red-400'
+                  }`}
+                >
+                  DQ: {Math.round(hoveredNode.dqScore)}%
+                </Badge>
+              )}
             </div>
             <div className="font-medium text-zinc-200 mb-1">{hoveredNode.label}</div>
             {hoveredNode.type === 'outcome' && (
@@ -514,6 +604,15 @@ export function OutcomeCanvas() {
                   <Badge variant="outline" className="text-xs mr-1">{(hoveredNode.entity as DataQualityRule).ruleType}</Badge>
                   <Badge variant="outline" className="text-xs">{(hoveredNode.entity as DataQualityRule).severity}</Badge>
                 </div>
+                {(hoveredNode.entity as DataQualityRule).lastRunResult && (
+                  <div className="mt-2 pt-2 border-t border-zinc-700">
+                    <div className="text-zinc-500">Last Run:</div>
+                    <div className="flex gap-3 mt-1">
+                      <span className="text-emerald-400">{(hoveredNode.entity as DataQualityRule).lastRunResult!.passedRecords.toLocaleString()} passed</span>
+                      <span className="text-red-400">{(hoveredNode.entity as DataQualityRule).lastRunResult!.failedRecords.toLocaleString()} failed</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
