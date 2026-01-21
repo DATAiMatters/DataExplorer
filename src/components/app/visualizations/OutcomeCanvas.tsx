@@ -4,7 +4,8 @@ import { useAppStore } from '@/store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { ZoomIn, ZoomOut, RotateCcw, Target } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Target, Network, GitBranch } from 'lucide-react';
+import { OutcomeLineage } from './OutcomeLineage';
 import type { BusinessOutcome, KPI, CriticalDataElement, DataQualityRule } from '@/types';
 
 type NodeType = 'outcome' | 'kpi' | 'cde' | 'rule';
@@ -39,6 +40,7 @@ export function OutcomeCanvas() {
   const [hoveredNode, setHoveredNode] = useState<CanvasNode | null>(null);
   const [linkStrength, setLinkStrength] = useState(0.4);
   const [chargeStrength, setChargeStrength] = useState(-400);
+  const [viewMode, setViewMode] = useState<'force' | 'lineage'>('force');
 
   const outcomes = useAppStore((s) => s.businessOutcomes);
   const kpis = useAppStore((s) => s.kpis);
@@ -337,11 +339,75 @@ export function OutcomeCanvas() {
     );
   }
 
+  // Render lineage view
+  if (viewMode === 'lineage') {
+    return (
+      <div className="h-full flex flex-col">
+        {/* View Toggle */}
+        <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-900/50">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-zinc-800 rounded-lg p-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('force')}
+                className="h-7 px-3 text-xs text-zinc-400 hover:text-zinc-200"
+              >
+                <Network className="w-3.5 h-3.5 mr-1.5" />
+                Force
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('lineage')}
+                className="h-7 px-3 text-xs bg-zinc-700 text-zinc-100"
+              >
+                <GitBranch className="w-3.5 h-3.5 mr-1.5" />
+                Lineage
+              </Button>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-zinc-500">
+            <span>{stats.outcomes} Outcomes</span>
+            <span>{stats.kpis} KPIs</span>
+            <span>{stats.cdes} CDEs</span>
+            <span>{stats.rules} Rules</span>
+          </div>
+        </div>
+        <div className="flex-1">
+          <OutcomeLineage />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Controls */}
       <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-900/50">
         <div className="flex items-center gap-4">
+          {/* View Toggle */}
+          <div className="flex items-center bg-zinc-800 rounded-lg p-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('force')}
+              className="h-7 px-3 text-xs bg-zinc-700 text-zinc-100"
+            >
+              <Network className="w-3.5 h-3.5 mr-1.5" />
+              Force
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('lineage')}
+              className="h-7 px-3 text-xs text-zinc-400 hover:text-zinc-200"
+            >
+              <GitBranch className="w-3.5 h-3.5 mr-1.5" />
+              Lineage
+            </Button>
+          </div>
+
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => handleZoom(1.3)}>
               <ZoomIn className="w-4 h-4" />
