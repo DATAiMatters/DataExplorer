@@ -6,20 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { ZoomIn, ZoomOut, RotateCcw, Target, Network, GitBranch } from 'lucide-react';
 import { OutcomeLineage } from './OutcomeLineage';
+import { useToast } from '@/hooks/use-toast';
 import type { BusinessOutcome, KPI, CriticalDataElement, DataQualityRule } from '@/types';
 
-type NodeType = 'outcome' | 'kpi' | 'cde' | 'rule';
+// --- Semantic Graph Node & Edge Types ---
+type NodeType = 'outcome' | 'kpi' | 'cde' | 'rule' | 'goal' | 'policy' | 'dataset';
 
 interface CanvasNode extends d3.SimulationNodeDatum {
   id: string;
   label: string;
   type: NodeType;
-  entity: BusinessOutcome | KPI | CriticalDataElement | DataQualityRule;
-  dqScore: number | null; // DQ score 0-100, null if not computed
+  entity: any; // Accept any asset type for extensibility
+  dqScore: number | null;
+  impactScore?: number; // For business value
+  maturityTier?: string; // For semantic maturity
 }
 
 interface CanvasLink extends d3.SimulationLinkDatum<CanvasNode> {
-  type: 'outcome-kpi' | 'kpi-cde' | 'cde-rule';
+  type: 'outcome-kpi' | 'kpi-cde' | 'cde-rule' | 'enforces' | 'defines' | 'impacts';
 }
 
 const nodeTypeColors: Record<NodeType, string> = {
@@ -27,6 +31,9 @@ const nodeTypeColors: Record<NodeType, string> = {
   kpi: '#3b82f6',     // blue-500
   cde: '#f59e0b',     // amber-500
   rule: '#8b5cf6',    // violet-500
+  goal: '#22d3ee',    // cyan-400
+  policy: '#eab308',  // yellow-500
+  dataset: '#6366f1', // indigo-500
 };
 
 // DQ health score colors
@@ -41,6 +48,9 @@ const edgeTypeColors: Record<string, string> = {
   'outcome-kpi': '#10b981',
   'kpi-cde': '#3b82f6',
   'cde-rule': '#f59e0b',
+  'enforces': '#eab308',
+  'defines': '#6366f1',
+  'impacts': '#ef4444',
 };
 
 export function OutcomeCanvas() {
@@ -50,6 +60,12 @@ export function OutcomeCanvas() {
   const [linkStrength, setLinkStrength] = useState(0.4);
   const [chargeStrength, setChargeStrength] = useState(-400);
   const [viewMode, setViewMode] = useState<'force' | 'lineage'>('force');
+  const [semanticQuery, setSemanticQuery] = useState('');
+  const [showInspirationModal, setShowInspirationModal] = useState(false);
+  const [showAISuggestionPanel, setShowAISuggestionPanel] = useState(false);
+  const { toast } = useToast();
+  const [importing, setImporting] = useState(false);
+  const [importDb, setImportDb] = useState('skp');
 
   const outcomes = useAppStore((s) => s.businessOutcomes);
   const kpis = useAppStore((s) => s.kpis);
@@ -188,6 +204,59 @@ export function OutcomeCanvas() {
     };
   }, [outcomes, kpis, cdes, dqRules, graphData.links]);
 
+  // --- Traceability Path Highlighting ---
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [tracePath, setTracePath] = useState<string[]>([]);
+
+  function handleNodeSelect(nodeId: string) {
+    setSelectedNodeId(nodeId);
+    // Simple BFS to find path to Outcome
+    const path: string[] = [];
+    let currentId = nodeId;
+    const visited = new Set<string>();
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId);
+      path.push(currentId);
+      const link = graphData.links.find(l => l.source === currentId);
+      if (link && typeof link.target === 'string') {
+        currentId = link.target;
+      } else {
+        break;
+      }
+    }
+    setTracePath(path);
+  }
+
+  async function handleSKPImport() {
+    setImporting(true);
+    try {
+      const res = await fetch(`/api/skp-import?db=${encodeURIComponent(importDb)}`);
+      const data = await res.json();
+      if (data.success) {
+        const assetCount = data.assets?.success ?? data.assets?.total ?? 0;
+        const relCount = data.relationships?.success ?? data.relationships?.total ?? 0;
+        toast({
+          title: 'SKP Import Complete',
+          description: `${assetCount} assets, ${relCount} relationships imported.`
+        });
+      } else {
+        toast({
+          title: 'SKP Import Error',
+          description: data.error || data.details || 'Unknown error',
+          variant: 'destructive',
+        });
+      }
+    } catch (e) {
+      toast({
+        title: 'SKP Import Error',
+        description: String(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setImporting(false);
+    }
+  }
+
   useEffect(() => {
     if (!svgRef.current || graphData.nodes.length === 0) return;
 
@@ -268,9 +337,12 @@ export function OutcomeCanvas() {
       .data(links)
       .enter()
       .append('line')
-      .attr('stroke', (d) => edgeTypeColors[d.type] || '#404040')
+      .attr('stroke', (d) => tracePath.includes(d.source as string) && tracePath.includes(d.target as string)
+        ? '#ef4444' // Highlighted path color
+        : edgeTypeColors[d.type] || '#404040')
       .attr('stroke-opacity', 0.6)
-      .attr('stroke-width', 2)
+      .attr('stroke-width', (d) => tracePath.includes(d.source as string) && tracePath.includes(d.target as string)
+        ? 4 : 2)
       .attr('marker-end', (d) => `url(#arrow-${d.type})`);
 
     // Draw DQ health indicator rings (outer ring showing health status)
@@ -308,6 +380,9 @@ export function OutcomeCanvas() {
       .on('mouseout', function () {
         d3.select(this).attr('stroke', '#18181b').attr('stroke-width', 2);
         setHoveredNode(null);
+      })
+      .on('click', function (_event, d) {
+        handleNodeSelect(d.id);
       })
       .call(
         d3
@@ -360,7 +435,7 @@ export function OutcomeCanvas() {
     return () => {
       simulation.stop();
     };
-  }, [graphData, linkStrength, chargeStrength]);
+  }, [graphData, linkStrength, chargeStrength, tracePath]);
 
   const handleZoom = (factor: number) => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
@@ -378,6 +453,11 @@ export function OutcomeCanvas() {
       zoomBehaviorRef.current.transform,
       d3.zoomIdentity
     );
+  };
+
+  const handleSemanticQuery = () => {
+    // Placeholder for semantic query handling logic
+    console.log('Semantic query:', semanticQuery);
   };
 
   if (graphData.nodes.length === 0) {
@@ -400,27 +480,25 @@ export function OutcomeCanvas() {
       <div className="h-full flex flex-col">
         {/* View Toggle */}
         <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-900/50">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center bg-zinc-800 rounded-lg p-0.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setViewMode('force')}
-                className="h-7 px-3 text-xs text-zinc-400 hover:text-zinc-200"
-              >
-                <Network className="w-3.5 h-3.5 mr-1.5" />
-                Force
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setViewMode('lineage')}
-                className="h-7 px-3 text-xs bg-zinc-700 text-zinc-100"
-              >
-                <GitBranch className="w-3.5 h-3.5 mr-1.5" />
-                Lineage
-              </Button>
-            </div>
+          <div className="flex items-center bg-zinc-800 rounded-lg p-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('force')}
+              className="h-7 px-3 text-xs text-zinc-400 hover:text-zinc-200"
+            >
+              <Network className="w-3.5 h-3.5 mr-1.5" />
+              Force
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('lineage')}
+              className="h-7 px-3 text-xs bg-zinc-700 text-zinc-100"
+            >
+              <GitBranch className="w-3.5 h-3.5 mr-1.5" />
+              Lineage
+            </Button>
           </div>
           <div className="flex items-center gap-3 text-xs text-zinc-500">
             <span>{stats.outcomes} Outcomes</span>
@@ -498,6 +576,24 @@ export function OutcomeCanvas() {
               onValueChange={([v]) => setChargeStrength(-v)}
             />
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-2"
+            onClick={handleSKPImport}
+            disabled={importing}
+          >
+            {importing ? 'Importing SKP...' : 'Import SKP Catalog'}
+          </Button>
+          <input
+            type="text"
+            className="ml-2 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs w-32"
+            value={importDb}
+            onChange={e => setImportDb(e.target.value)}
+            placeholder="Neo4j DB name"
+            aria-label="Neo4j DB name"
+          />
         </div>
 
         <div className="flex items-center gap-3 text-xs text-zinc-500">
@@ -512,6 +608,26 @@ export function OutcomeCanvas() {
       {/* Graph */}
       <div className="flex-1 relative">
         <svg ref={svgRef} className="w-full h-full bg-zinc-950" />
+
+        {/* Semantic Query/Filter Bar */}
+        <div className="absolute top-4 left-4 z-10">
+          <input
+            type="text"
+            className="px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-200 text-sm w-72"
+            placeholder="Semantic query: e.g. 'rules impacting high-value datasets'"
+            onChange={(e) => setSemanticQuery(e.target.value)}
+            value={semanticQuery}
+            aria-label="Semantic Query Filter"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-2"
+            onClick={handleSemanticQuery}
+          >
+            Filter
+          </Button>
+        </div>
 
         {/* Legend */}
         <div className="absolute bottom-4 left-4 bg-zinc-900/90 border border-zinc-800 rounded-lg p-3">
@@ -532,6 +648,45 @@ export function OutcomeCanvas() {
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.rule }} />
               <span className="text-xs text-zinc-300">DQ Rule</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.goal }} />
+              <span className="text-xs text-cyan-300">Goal</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.policy }} />
+              <span className="text-xs text-yellow-300">Policy</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.dataset }} />
+              <span className="text-xs text-indigo-300">Dataset</span>
+            </div>
+          </div>
+          <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">Edge Types</div>
+          <div className="space-y-1 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['outcome-kpi'] }} />
+              <span className="text-xs text-zinc-300">Outcome → KPI</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['kpi-cde'] }} />
+              <span className="text-xs text-zinc-300">KPI → CDE</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['cde-rule'] }} />
+              <span className="text-xs text-zinc-300">CDE → Rule</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['enforces'] }} />
+              <span className="text-xs text-yellow-300">Enforces</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['defines'] }} />
+              <span className="text-xs text-indigo-300">Defines</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['impacts'] }} />
+              <span className="text-xs text-red-300">Impacts</span>
             </div>
           </div>
           <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">DQ Health (Ring)</div>
@@ -617,6 +772,84 @@ export function OutcomeCanvas() {
             )}
           </div>
         )}
+
+        {/* --- Visual Inspiration & Impact Modal --- */}
+        {showInspirationModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 max-w-lg w-full relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2"
+                onClick={() => setShowInspirationModal(false)}
+                aria-label="Close Inspiration Modal"
+              >
+                ×
+              </Button>
+              <h2 className="text-lg font-bold text-emerald-400 mb-2">Semantic Graph Inspiration</h2>
+              <div className="text-sm text-zinc-300 mb-4">
+                <ul className="list-disc pl-4">
+                  <li>Transform SKP from a flat catalog to a semantic network</li>
+                  <li>Query: "Which rules impact high-value datasets?"</li>
+                  <li>Traceability from data issue to ROI</li>
+                  <li>Governance silo reduction: <span className="text-amber-400">30%</span> (industry benchmark)</li>
+                </ul>
+              </div>
+              <div className="mb-4">
+                <div className="font-semibold text-zinc-400 mb-1">Visual Examples:</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-zinc-800 rounded p-2 text-xs text-zinc-300">[Entity-Relationship Diagram]</div>
+                  <div className="bg-zinc-800 rounded p-2 text-xs text-zinc-300">[Semantic Network Viz]</div>
+                  <div className="bg-zinc-800 rounded p-2 text-xs text-zinc-300">[Business Outcome Traceability]</div>
+                  <div className="bg-zinc-800 rounded p-2 text-xs text-zinc-300">[Neo4j Browser Screenshot]</div>
+                </div>
+              </div>
+              <div className="text-xs text-zinc-500">Build on this graph to add kinetics like remediation actions!</div>
+            </div>
+          </div>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute bottom-4 right-4 z-10"
+          onClick={() => setShowInspirationModal(true)}
+        >
+          Inspiration & Impact
+        </Button>
+
+        {/* --- Extensibility for Engineers: AI Suggestion Panel Placeholder --- */}
+        {showAISuggestionPanel && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 max-w-md w-full relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2"
+                onClick={() => setShowAISuggestionPanel(false)}
+                aria-label="Close AI Suggestion Panel"
+              >
+                ×
+              </Button>
+              <h2 className="text-lg font-bold text-indigo-400 mb-2">AI Relationship Suggestions</h2>
+              <div className="text-sm text-zinc-300 mb-4">
+                <ul className="list-disc pl-4">
+                  <li>Suggest new relationships between assets</li>
+                  <li>Infer missing links for semantic maturity</li>
+                  <li>Highlight potential governance gaps</li>
+                </ul>
+              </div>
+              <div className="text-xs text-zinc-500">(Future roadmap: Integrate with AI service for live suggestions)</div>
+            </div>
+          </div>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute bottom-20 right-4 z-10"
+          onClick={() => setShowAISuggestionPanel(true)}
+        >
+          AI Suggestion
+        </Button>
       </div>
     </div>
   );
