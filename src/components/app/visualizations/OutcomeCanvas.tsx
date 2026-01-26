@@ -1289,6 +1289,19 @@ export function OutcomeCanvas() {
           >
             PTP Sample
           </Button>
+
+          {/* Inline Import Progress - shown next to import buttons */}
+          {importProgress && (
+            <div className="flex items-center gap-2 ml-3 bg-emerald-900/30 rounded px-2 py-1 border border-emerald-700/50">
+              <div className="animate-spin w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full" />
+              <span className="text-xs text-emerald-300 max-w-xs truncate">{importProgress.step || importProgress.message}</span>
+              {importProgress.current !== undefined && importProgress.total !== undefined && importProgress.total > 0 && (
+                <span className="text-xs text-emerald-400 font-medium whitespace-nowrap">
+                  {importProgress.current}/{importProgress.total} ({Math.round((importProgress.current / importProgress.total) * 100)}%)
+                </span>
+              )}
+            </div>
+          )}
           <input
             type="text"
             className="ml-2 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs w-24"
@@ -1332,10 +1345,10 @@ export function OutcomeCanvas() {
         {importProgress && (
           <div className="flex items-center gap-3 bg-zinc-800/80 rounded-lg px-3 py-1.5 border border-zinc-700">
             <div className="animate-spin w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full" />
-            <div className="flex flex-col">
+            <div className="flex flex-col max-w-md">
               <span className="text-xs text-zinc-200 font-medium">{importProgress.message}</span>
               {importProgress.step && (
-                <span className="text-xs text-zinc-400">{importProgress.step}</span>
+                <span className="text-xs text-zinc-400 truncate">{importProgress.step}</span>
               )}
             </div>
             {importProgress.current !== undefined && importProgress.total !== undefined && importProgress.total > 0 && (
@@ -1346,8 +1359,8 @@ export function OutcomeCanvas() {
                     style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }}
                   />
                 </div>
-                <span className="text-xs text-zinc-400 w-12 text-right">
-                  {Math.round((importProgress.current / importProgress.total) * 100)}%
+                <span className="text-xs text-zinc-400 whitespace-nowrap">
+                  {importProgress.current}/{importProgress.total}
                 </span>
               </div>
             )}

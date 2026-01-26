@@ -143,7 +143,7 @@ export function OutcomeLineage() {
   const [loadingNeo4j, setLoadingNeo4j] = useState(false);
   const [importSource, setImportSource] = useState('ptp-sample');
   const [importLabel, setImportLabel] = useState('PTP_Demo');
-  const [importDb, setImportDb] = useState('neo4j');
+  const [importDb, _setImportDb] = useState('neo4j');
   const { toast } = useToast();
 
   // Local store data (legacy)
@@ -788,26 +788,26 @@ export function OutcomeLineage() {
               )}
             </div>
             <div className="font-medium text-zinc-200 mb-1">{hoveredNode.label}</div>
-            {hoveredNode.entity.description && (
+            {(hoveredNode.entity as Record<string, unknown>).description ? (
               <div className="text-xs text-zinc-400">
-                {String(hoveredNode.entity.description)}
+                {String((hoveredNode.entity as Record<string, unknown>).description)}
               </div>
-            )}
-            {hoveredNode.entity.formula && (
+            ) : null}
+            {(hoveredNode.entity as Record<string, unknown>).formula ? (
               <div className="text-xs text-zinc-500 mt-1">
-                Formula: {String(hoveredNode.entity.formula)}
+                Formula: {String((hoveredNode.entity as Record<string, unknown>).formula)}
               </div>
-            )}
-            {hoveredNode.entity.system && (
+            ) : null}
+            {(hoveredNode.entity as Record<string, unknown>).system ? (
               <div className="text-xs text-zinc-500 mt-1">
-                System: {String(hoveredNode.entity.system)}
+                System: {String((hoveredNode.entity as Record<string, unknown>).system)}
               </div>
-            )}
-            {hoveredNode.entity.ownerRole && (
+            ) : null}
+            {(hoveredNode.entity as Record<string, unknown>).ownerRole ? (
               <div className="text-xs text-zinc-500 mt-1">
-                Owner: {String(hoveredNode.entity.ownerRole)}
+                Owner: {String((hoveredNode.entity as Record<string, unknown>).ownerRole)}
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>

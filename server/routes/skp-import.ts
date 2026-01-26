@@ -4,17 +4,22 @@ import { getDriver } from '../lib/neo4j';
 const skpImport = new Hono();
 
 // Types matching Syniti API response structure
+// Relationship schema from SKP API
+interface SKPRelationship {
+  id: string;                                    // ID of the related asset
+  type?: string;                                 // Type of the related asset (e.g., "policy", "business_process")
+  relationship?: string;                         // Relationship type (e.g., "related_to", "is part of a(n)")
+  direction?: 'in' | 'out' | 'both';            // Direction of the relationship
+  name?: string;                                 // Name of related asset (for display)
+}
+
 interface SKPTerm {
   id: string;
   name: string;
   definition?: string;
   status?: string;
   subject_area?: string;
-  relationships?: Array<{
-    id: string;
-    name: string;
-    type: string;
-  }>;
+  relationships?: SKPRelationship[];
 }
 
 interface SKPDataset {
@@ -25,6 +30,7 @@ interface SKPDataset {
   subject_area?: string;
   field_count?: number;
   categories?: string[];
+  relationships?: SKPRelationship[];
 }
 
 interface SKPField {
@@ -52,6 +58,7 @@ interface SKPRule {
   review_status?: string;
   version_state?: string;
   subject_area?: string;
+  relationships?: SKPRelationship[];
 }
 
 interface SKPPolicy {
@@ -59,6 +66,7 @@ interface SKPPolicy {
   name: string;
   description?: string;
   status?: string;
+  relationships?: SKPRelationship[];
 }
 
 interface SKPGoal {
@@ -68,6 +76,7 @@ interface SKPGoal {
   description?: string;
   status?: string;
   level?: string;
+  relationships?: SKPRelationship[];
 }
 
 interface SKPSystem {
@@ -80,6 +89,48 @@ interface SKPSystem {
     application_type?: string;
     is_sap?: boolean;
   };
+  relationships?: SKPRelationship[];
+}
+
+interface SKPBusinessProcess {
+  id: string;
+  asset_id?: string;
+  name?: string;
+  description?: string;
+  status?: string;
+  subject_area?: string;
+  data_quality_threshold_id?: string;
+  relationships?: SKPRelationship[];
+}
+
+interface SKPInitiative {
+  id: string;
+  asset_id?: string;
+  summary?: string;
+  description?: string;
+  status?: string;
+  level?: string;
+  time_frame?: string;
+  start_date?: string;
+  end_date?: string;
+  relationships?: SKPRelationship[];
+}
+
+interface SKPProgram {
+  id: string;
+  asset_id?: string;
+  name?: string;
+  description?: string;
+  summary?: string;
+  status?: string;
+  relationships?: SKPRelationship[];
+}
+
+interface SKPSubjectArea {
+  id: string;
+  name?: string;
+  description?: string;
+  status?: string;
 }
 
 interface ImportResult {
@@ -106,6 +157,36 @@ function getBasicAuthHeader(): string {
   return `Basic ${base64}`;
 }
 
+// Rate limiter: max 8 requests per second (SKP API limit)
+const rateLimiter = {
+  tokens: 8,
+  lastRefill: Date.now(),
+  maxTokens: 8,
+  refillRate: 1000, // 1 second
+
+  async acquire(): Promise<void> {
+    const now = Date.now();
+    const elapsed = now - this.lastRefill;
+
+    // Refill tokens based on elapsed time
+    if (elapsed >= this.refillRate) {
+      this.tokens = this.maxTokens;
+      this.lastRefill = now;
+    }
+
+    if (this.tokens > 0) {
+      this.tokens--;
+      return;
+    }
+
+    // Wait until we can get a token
+    const waitTime = this.refillRate - elapsed;
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+    this.tokens = this.maxTokens - 1;
+    this.lastRefill = Date.now();
+  }
+};
+
 async function fetchPaginated<T>(endpoint: string): Promise<T[]> {
   const baseUrl = process.env.SKP_API_BASE;
   if (!baseUrl) {
@@ -116,6 +197,9 @@ async function fetchPaginated<T>(endpoint: string): Promise<T[]> {
   let cursor = '';
 
   do {
+    // Acquire rate limit token before making request
+    await rateLimiter.acquire();
+
     const url = cursor
       ? `${baseUrl}/v3/${endpoint}?cursor=${encodeURIComponent(cursor)}`
       : `${baseUrl}/v3/${endpoint}`;
@@ -123,6 +207,13 @@ async function fetchPaginated<T>(endpoint: string): Promise<T[]> {
     const res = await fetch(url, {
       headers: { Authorization: getBasicAuthHeader() },
     });
+
+    if (res.status === 429) {
+      // Rate limited - wait and retry
+      console.log(`Rate limited on ${endpoint}, waiting 1s...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      continue;
+    }
 
     if (!res.ok) {
       throw new Error(`SKP API ${endpoint} returned ${res.status}: ${res.statusText}`);
@@ -136,33 +227,49 @@ async function fetchPaginated<T>(endpoint: string): Promise<T[]> {
   return allItems;
 }
 
-// Fetch fields for a specific dataset
-async function fetchDatasetFields(datasetId: string): Promise<SKPField[]> {
+// Fetch fields for a specific dataset with rate limiting and retry logic
+async function fetchDatasetFields(datasetId: string, retries = 3): Promise<SKPField[]> {
   const baseUrl = process.env.SKP_API_BASE;
   if (!baseUrl) {
     return [];
   }
 
-  try {
-    const res = await fetch(`${baseUrl}/v3/datasets/${datasetId}/fields`, {
-      headers: { Authorization: getBasicAuthHeader() },
-    });
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Acquire rate limit token before making request
+      await rateLimiter.acquire();
 
-    if (!res.ok) {
-      // Some datasets may not have fields endpoint - that's okay
-      if (res.status !== 404) {
-        console.log(`Failed to fetch fields for dataset ${datasetId}: ${res.status}`);
+      const res = await fetch(`${baseUrl}/v3/datasets/${datasetId}/fields`, {
+        headers: { Authorization: getBasicAuthHeader() },
+      });
+
+      if (res.status === 429) {
+        // Rate limited - wait with exponential backoff and retry
+        const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+        console.log(`Rate limited fetching fields for ${datasetId}, waiting ${waitTime}ms (attempt ${attempt + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
       }
+
+      if (!res.ok) {
+        // Some datasets may not have fields endpoint - that's okay
+        if (res.status !== 404) {
+          console.log(`Failed to fetch fields for dataset ${datasetId}: ${res.status}`);
+        }
+        return [];
+      }
+
+      const data = await res.json();
+      // Handle different response structures
+      return data.data || data.items || data || [];
+    } catch (e) {
+      console.log(`Error fetching fields for dataset ${datasetId}: ${e instanceof Error ? e.message : e}`);
       return [];
     }
-
-    const data = await res.json();
-    // Handle different response structures
-    return data.data || data.items || data || [];
-  } catch (e) {
-    console.log(`Error fetching fields for dataset ${datasetId}: ${e instanceof Error ? e.message : e}`);
-    return [];
   }
+
+  console.log(`Gave up fetching fields for ${datasetId} after ${retries} retries`);
+  return [];
 }
 
 skpImport.get('/', async (c) => {
@@ -239,6 +346,22 @@ skpImport.get('/', async (c) => {
     console.log('Fetching systems...');
     const systems = await fetchPaginated<SKPSystem>('systems');
     console.log(`Fetched ${systems.length} systems`);
+
+    console.log('Fetching business-processes...');
+    const businessProcesses = await fetchPaginated<SKPBusinessProcess>('business-processes');
+    console.log(`Fetched ${businessProcesses.length} business-processes`);
+
+    console.log('Fetching initiatives...');
+    const initiatives = await fetchPaginated<SKPInitiative>('initiatives');
+    console.log(`Fetched ${initiatives.length} initiatives`);
+
+    console.log('Fetching programs...');
+    const programs = await fetchPaginated<SKPProgram>('programs');
+    console.log(`Fetched ${programs.length} programs`);
+
+    console.log('Fetching subject-areas...');
+    const subjectAreas = await fetchPaginated<SKPSubjectArea>('subject-areas');
+    console.log(`Fetched ${subjectAreas.length} subject-areas`);
 
     // Import Terms
     results.terms = { total: terms.length, success: 0, failed: 0, errors: [] };
@@ -515,38 +638,205 @@ skpImport.get('/', async (c) => {
       }
     }
 
-    // Create relationships from terms (they have embedded relationships)
-    console.log('Creating relationships from terms...');
-    for (const term of terms) {
-      if (term.relationships && term.relationships.length > 0) {
-        for (const rel of term.relationships) {
-          relationshipResults.total++;
-          try {
-            // Create relationship to any node type
-            await session.run(
-              `MATCH (a:Term {id: $sourceId})
-               MATCH (b {id: $targetId})
-               MERGE (a)-[r:RELATES_TO {type: $relType, source: $source, imported_at: $importedAt}]->(b)`,
-              {
-                sourceId: term.id,
-                targetId: rel.id,
-                relType: rel.type || 'RELATED',
-                source,
-                importedAt,
-              }
-            );
-            relationshipResults.success++;
-          } catch (e) {
-            relationshipResults.failed++;
-            relationshipResults.errors.push({
-              source: term.id,
-              target: rel.id,
-              error: e instanceof Error ? e.message : String(e),
-            });
+    // Import Business Processes
+    results.businessProcesses = { total: businessProcesses.length, success: 0, failed: 0, errors: [] };
+    for (const bp of businessProcesses) {
+      try {
+        await session.run(
+          `MERGE (n:BusinessProcess {id: $id})
+           SET n.asset_id = $asset_id,
+               n.name = $name,
+               n.description = $description,
+               n.status = $status,
+               n.subject_area = $subject_area,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          {
+            id: bp.id,
+            asset_id: bp.asset_id || '',
+            name: bp.name || bp.asset_id || bp.id,
+            description: bp.description || '',
+            status: bp.status || '',
+            subject_area: bp.subject_area || '',
+            source,
+            importedAt,
+          }
+        );
+        results.businessProcesses.success++;
+      } catch (e) {
+        results.businessProcesses.failed++;
+        results.businessProcesses.errors.push({
+          id: bp.id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    // Import Initiatives
+    results.initiatives = { total: initiatives.length, success: 0, failed: 0, errors: [] };
+    for (const initiative of initiatives) {
+      try {
+        await session.run(
+          `MERGE (n:Initiative {id: $id})
+           SET n.asset_id = $asset_id,
+               n.name = $summary,
+               n.summary = $summary,
+               n.description = $description,
+               n.status = $status,
+               n.level = $level,
+               n.time_frame = $time_frame,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          {
+            id: initiative.id,
+            asset_id: initiative.asset_id || '',
+            summary: initiative.summary || initiative.asset_id || initiative.id,
+            description: initiative.description || '',
+            status: initiative.status || '',
+            level: initiative.level || '',
+            time_frame: initiative.time_frame || '',
+            source,
+            importedAt,
+          }
+        );
+        results.initiatives.success++;
+      } catch (e) {
+        results.initiatives.failed++;
+        results.initiatives.errors.push({
+          id: initiative.id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    // Import Programs
+    results.programs = { total: programs.length, success: 0, failed: 0, errors: [] };
+    for (const program of programs) {
+      try {
+        await session.run(
+          `MERGE (n:Program {id: $id})
+           SET n.asset_id = $asset_id,
+               n.name = $name,
+               n.summary = $summary,
+               n.description = $description,
+               n.status = $status,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          {
+            id: program.id,
+            asset_id: program.asset_id || '',
+            name: program.name || program.summary || program.asset_id || program.id,
+            summary: program.summary || '',
+            description: program.description || '',
+            status: program.status || '',
+            source,
+            importedAt,
+          }
+        );
+        results.programs.success++;
+      } catch (e) {
+        results.programs.failed++;
+        results.programs.errors.push({
+          id: program.id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    // Import Subject Areas
+    results.subjectAreas = { total: subjectAreas.length, success: 0, failed: 0, errors: [] };
+    for (const sa of subjectAreas) {
+      try {
+        await session.run(
+          `MERGE (n:SubjectArea {id: $id})
+           SET n.name = $name,
+               n.description = $description,
+               n.status = $status,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          {
+            id: sa.id,
+            name: sa.name || sa.id,
+            description: sa.description || '',
+            status: sa.status || '',
+            source,
+            importedAt,
+          }
+        );
+        results.subjectAreas.success++;
+      } catch (e) {
+        results.subjectAreas.failed++;
+        results.subjectAreas.errors.push({
+          id: sa.id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    // Create relationships from ALL asset types (not just terms)
+    console.log('Creating relationships from all assets...');
+
+    // Helper to process relationships from any asset type
+    const processAssetRelationships = async (
+      assets: Array<{ id: string; relationships?: SKPRelationship[] }>,
+      sourceType: string
+    ) => {
+      for (const asset of assets) {
+        if (asset.relationships && asset.relationships.length > 0) {
+          for (const rel of asset.relationships) {
+            relationshipResults.total++;
+            try {
+              await session.run(
+                `MATCH (a {id: $sourceId})
+                 MATCH (b {id: $targetId})
+                 MERGE (a)-[r:RELATES_TO]->(b)
+                 SET r.relationship_type = $relType,
+                     r.source_type = $sourceType,
+                     r.target_type = $targetType,
+                     r.direction = $direction,
+                     r.source = $source,
+                     r.imported_at = $importedAt`,
+                {
+                  sourceId: asset.id,
+                  targetId: rel.id,
+                  relType: rel.relationship || 'related_to',
+                  sourceType,
+                  targetType: rel.type || 'unknown',
+                  direction: rel.direction || 'out',
+                  source,
+                  importedAt,
+                }
+              );
+              relationshipResults.success++;
+            } catch (e) {
+              relationshipResults.failed++;
+              relationshipResults.errors.push({
+                source: asset.id,
+                target: rel.id,
+                error: e instanceof Error ? e.message : String(e),
+              });
+            }
           }
         }
       }
-    }
+    };
+
+    // Process relationships from all asset types
+    await processAssetRelationships(terms, 'Term');
+    await processAssetRelationships(datasets, 'Dataset');
+    await processAssetRelationships(rules, 'Rule');
+    await processAssetRelationships(policies, 'Policy');
+    await processAssetRelationships(goals, 'Goal');
+    await processAssetRelationships(systems, 'System');
+    await processAssetRelationships(businessProcesses, 'BusinessProcess');
+    await processAssetRelationships(initiatives, 'Initiative');
+    await processAssetRelationships(programs, 'Program');
+    // Note: SubjectAreas don't typically have relationships in SKP
+    console.log(`Created ${relationshipResults.success} relationships from all asset types`);
 
     // Calculate totals
     const totalNodes = Object.values(results).reduce((sum, r) => sum + r.total, 0);
@@ -637,25 +927,51 @@ skpImport.get('/stream', async (c) => {
       };
 
       try {
-        // Phase 1: Fetch from SKP API - ALL IN PARALLEL
-        send('phase', { phase: 'fetch', message: 'Fetching data from SKP API (parallel)...' });
-        send('progress', { step: 'Fetching all entity types in parallel...', current: 0, total: 6 });
+        // Phase 1: Fetch from SKP API - in batches to avoid rate limiting
+        send('phase', { phase: 'fetch', message: 'Fetching data from SKP API...' });
 
         const startFetch = Date.now();
-        const [terms, datasets, rules, policies, goals, systems] = await Promise.all([
+
+        // Helper to add delay between batches (avoid rate limiting)
+        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // Batch 1: Core entities (terms, datasets, rules)
+        send('progress', { step: 'Fetching terms, datasets, rules...', current: 0, total: 10 });
+        const [terms, datasets, rules] = await Promise.all([
           fetchPaginated<SKPTerm>('terms'),
           fetchPaginated<SKPDataset>('datasets'),
           fetchPaginated<SKPRule>('rules'),
+        ]);
+        send('progress', { step: `Fetched ${terms.length} terms, ${datasets.length} datasets, ${rules.length} rules`, current: 3, total: 10 });
+
+        await delay(500); // Small delay to avoid rate limiting
+
+        // Batch 2: Governance entities (policies, goals, systems)
+        send('progress', { step: 'Fetching policies, goals, systems...', current: 3, total: 10 });
+        const [policies, goals, systems] = await Promise.all([
           fetchPaginated<SKPPolicy>('policies'),
           fetchPaginated<SKPGoal>('goals'),
           fetchPaginated<SKPSystem>('systems'),
         ]);
+        send('progress', { step: `Fetched ${policies.length} policies, ${goals.length} goals, ${systems.length} systems`, current: 6, total: 10 });
+
+        await delay(500); // Small delay to avoid rate limiting
+
+        // Batch 3: Strategic entities (business-processes, initiatives, programs, subject-areas)
+        send('progress', { step: 'Fetching business-processes, initiatives, programs, subject-areas...', current: 6, total: 10 });
+        const [businessProcesses, initiatives, programs, subjectAreas] = await Promise.all([
+          fetchPaginated<SKPBusinessProcess>('business-processes'),
+          fetchPaginated<SKPInitiative>('initiatives'),
+          fetchPaginated<SKPProgram>('programs'),
+          fetchPaginated<SKPSubjectArea>('subject-areas'),
+        ]);
+
         const fetchTime = ((Date.now() - startFetch) / 1000).toFixed(1);
 
         send('progress', {
-          step: `Fetched all in ${fetchTime}s: ${terms.length} terms, ${datasets.length} datasets, ${rules.length} rules, ${policies.length} policies, ${goals.length} goals, ${systems.length} systems`,
-          current: 6,
-          total: 6
+          step: `Fetched all in ${fetchTime}s: ${terms.length} terms, ${datasets.length} datasets, ${rules.length} rules, ${policies.length} policies, ${goals.length} goals, ${systems.length} systems, ${businessProcesses.length} business-processes, ${initiatives.length} initiatives, ${programs.length} programs, ${subjectAreas.length} subject-areas`,
+          current: 10,
+          total: 10
         });
 
         // Phase 2: Import to Neo4j using BATCHED operations
@@ -754,29 +1070,26 @@ skpImport.get('/stream', async (c) => {
           })
         );
 
-        // Fetch and import fields in parallel batches (skip individual field fetch to save time)
-        send('progress', { step: 'Fetching dataset fields in parallel...', current: 0, total: datasets.length });
+        // Fetch and import fields sequentially (rate limiter handles throttling)
+        send('progress', { step: 'Fetching dataset fields...', current: 0, total: datasets.length });
         results.fields = { total: 0, success: 0, failed: 0, errors: [] };
 
-        // Fetch fields for datasets in parallel batches of 10
-        const FIELD_FETCH_BATCH = 10;
         const allFields: Array<{ datasetId: string; field: SKPField }> = [];
 
-        for (let i = 0; i < datasets.length; i += FIELD_FETCH_BATCH) {
-          const batch = datasets.slice(i, i + FIELD_FETCH_BATCH);
-          const fieldResults = await Promise.all(
-            batch.map(async (ds) => {
-              const fields = await fetchDatasetFields(ds.id);
-              return fields.map(f => ({ datasetId: ds.id, field: f }));
-            })
-          );
-          fieldResults.flat().forEach(f => allFields.push(f));
+        // Fetch fields sequentially - rate limiter ensures we stay under 8 req/s
+        for (let i = 0; i < datasets.length; i++) {
+          const ds = datasets[i];
+          const fields = await fetchDatasetFields(ds.id);
+          fields.forEach(f => allFields.push({ datasetId: ds.id, field: f }));
 
-          send('progress', {
-            step: `Fetching fields: ${Math.min(i + FIELD_FETCH_BATCH, datasets.length)}/${datasets.length} datasets (${allFields.length} fields)`,
-            current: Math.min(i + FIELD_FETCH_BATCH, datasets.length),
-            total: datasets.length,
-          });
+          // Update progress every 5 datasets
+          if ((i + 1) % 5 === 0 || i === datasets.length - 1) {
+            send('progress', {
+              step: `Fetching fields: ${i + 1}/${datasets.length} datasets (${allFields.length} fields)`,
+              current: i + 1,
+              total: datasets.length,
+            });
+          }
         }
 
         // Batch import all fields
@@ -896,39 +1209,177 @@ skpImport.get('/stream', async (c) => {
           })
         );
 
-        // Phase 3: Create relationships (batched)
-        send('phase', { phase: 'relationships', message: 'Creating relationships...' });
+        // Import Business Processes (batched)
+        results.businessProcesses = await batchImport(businessProcesses, 'business-processes',
+          `UNWIND $batch AS row
+           MERGE (n:BusinessProcess {id: row.id})
+           SET n.asset_id = row.asset_id,
+               n.name = row.name,
+               n.description = row.description,
+               n.status = row.status,
+               n.subject_area = row.subject_area,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (bp) => ({
+            id: bp.id,
+            asset_id: bp.asset_id || '',
+            name: bp.name || bp.asset_id || bp.id,
+            description: bp.description || '',
+            status: bp.status || '',
+            subject_area: bp.subject_area || '',
+          })
+        );
 
-        const allRelationships: Array<{ sourceId: string; targetId: string; relType: string }> = [];
-        for (const term of terms) {
-          if (term.relationships && term.relationships.length > 0) {
-            for (const rel of term.relationships) {
-              allRelationships.push({
-                sourceId: term.id,
-                targetId: rel.id,
-                relType: rel.type || 'RELATED',
-              });
+        // Import Initiatives (batched)
+        results.initiatives = await batchImport(initiatives, 'initiatives',
+          `UNWIND $batch AS row
+           MERGE (n:Initiative {id: row.id})
+           SET n.asset_id = row.asset_id,
+               n.name = row.summary,
+               n.summary = row.summary,
+               n.description = row.description,
+               n.status = row.status,
+               n.level = row.level,
+               n.time_frame = row.time_frame,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (initiative) => ({
+            id: initiative.id,
+            asset_id: initiative.asset_id || '',
+            summary: initiative.summary || initiative.asset_id || initiative.id,
+            description: initiative.description || '',
+            status: initiative.status || '',
+            level: initiative.level || '',
+            time_frame: initiative.time_frame || '',
+          })
+        );
+
+        // Import Programs (batched)
+        results.programs = await batchImport(programs, 'programs',
+          `UNWIND $batch AS row
+           MERGE (n:Program {id: row.id})
+           SET n.asset_id = row.asset_id,
+               n.name = row.name,
+               n.summary = row.summary,
+               n.description = row.description,
+               n.status = row.status,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (program) => ({
+            id: program.id,
+            asset_id: program.asset_id || '',
+            name: program.name || program.summary || program.asset_id || program.id,
+            summary: program.summary || '',
+            description: program.description || '',
+            status: program.status || '',
+          })
+        );
+
+        // Import Subject Areas (batched)
+        results.subjectAreas = await batchImport(subjectAreas, 'subject-areas',
+          `UNWIND $batch AS row
+           MERGE (n:SubjectArea {id: row.id})
+           SET n.name = row.name,
+               n.description = row.description,
+               n.status = row.status,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (sa) => ({
+            id: sa.id,
+            name: sa.name || sa.id,
+            description: sa.description || '',
+            status: sa.status || '',
+          })
+        );
+
+        // Phase 3: Create relationships (batched) - from ALL asset types
+        send('phase', { phase: 'relationships', message: 'Creating relationships from all assets...' });
+
+        // Collect relationships from ALL asset types
+        interface CollectedRelationship {
+          sourceId: string;
+          sourceType: string;   // The Neo4j label of the source node
+          targetId: string;
+          targetType: string;   // The type of the target asset from SKP
+          relType: string;      // The relationship type (e.g., "related_to", "is part of")
+          direction: string;    // "in", "out", or "both"
+        }
+
+        const allRelationships: CollectedRelationship[] = [];
+
+        // Helper to extract relationships from any asset
+        const extractRelationships = (
+          assets: Array<{ id: string; relationships?: SKPRelationship[] }>,
+          sourceType: string
+        ) => {
+          for (const asset of assets) {
+            if (asset.relationships && asset.relationships.length > 0) {
+              for (const rel of asset.relationships) {
+                allRelationships.push({
+                  sourceId: asset.id,
+                  sourceType,
+                  targetId: rel.id,
+                  targetType: rel.type || 'unknown',
+                  relType: rel.relationship || 'related_to',
+                  direction: rel.direction || 'out',
+                });
+              }
             }
           }
-        }
+        };
+
+        // Extract relationships from all asset types
+        extractRelationships(terms, 'Term');
+        extractRelationships(datasets, 'Dataset');
+        extractRelationships(rules, 'Rule');
+        extractRelationships(policies, 'Policy');
+        extractRelationships(goals, 'Goal');
+        extractRelationships(systems, 'System');
+        extractRelationships(businessProcesses, 'BusinessProcess');
+        extractRelationships(initiatives, 'Initiative');
+        extractRelationships(programs, 'Program');
+        // Note: SubjectAreas typically don't have relationships in SKP
+
+        send('progress', {
+          step: `Found ${allRelationships.length} relationships across all assets`,
+          current: 0,
+          total: allRelationships.length
+        });
 
         relationshipResults.total = allRelationships.length;
         if (allRelationships.length > 0) {
           for (let i = 0; i < allRelationships.length; i += BATCH_SIZE) {
             const batch = allRelationships.slice(i, i + BATCH_SIZE);
             try {
+              // Use generic match that works with any node type
+              // Create RELATES_TO relationship with properties describing the relationship
               await session.run(
                 `UNWIND $batch AS row
-                 MATCH (a:Term {id: row.sourceId})
+                 MATCH (a {id: row.sourceId})
                  MATCH (b {id: row.targetId})
                  MERGE (a)-[r:RELATES_TO]->(b)
-                 SET r.type = row.relType, r.source = $source, r.imported_at = $importedAt`,
+                 SET r.relationship_type = row.relType,
+                     r.source_type = row.sourceType,
+                     r.target_type = row.targetType,
+                     r.direction = row.direction,
+                     r.source = $source,
+                     r.imported_at = $importedAt`,
                 { batch, source, importedAt }
               );
               relationshipResults.success += batch.length;
             } catch {
               relationshipResults.failed += batch.length;
             }
+
+            send('progress', {
+              step: `Creating relationships: ${Math.min(i + BATCH_SIZE, allRelationships.length)}/${allRelationships.length}`,
+              current: Math.min(i + BATCH_SIZE, allRelationships.length),
+              total: allRelationships.length
+            });
           }
         }
 
