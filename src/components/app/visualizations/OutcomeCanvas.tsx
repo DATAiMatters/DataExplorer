@@ -392,27 +392,8 @@ export function OutcomeCanvas() {
   const [showLegend, setShowLegend] = useState(true);
 
   // --- Traceability Path Highlighting ---
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [tracePath, setTracePath] = useState<string[]>([]);
-
-  function handleNodeSelect(nodeId: string) {
-    setSelectedNodeId(nodeId);
-    // Simple BFS to find path to Outcome
-    const path: string[] = [];
-    let currentId = nodeId;
-    const visited = new Set<string>();
-    while (currentId && !visited.has(currentId)) {
-      visited.add(currentId);
-      path.push(currentId);
-      const link = graphData.links.find(l => l.source === currentId);
-      if (link && typeof link.target === 'string') {
-        currentId = link.target;
-      } else {
-        break;
-      }
-    }
-    setTracePath(path);
-  }
+  // tracePath is used in the D3 rendering to highlight paths
+  const [tracePath, _setTracePath] = useState<string[]>([]);
 
   async function handleSKPImport() {
     setImporting(true);
@@ -761,7 +742,7 @@ export function OutcomeCanvas() {
     ];
 
     // Create menu buttons
-    menuActions.forEach((action, i) => {
+    menuActions.forEach((action) => {
       const angleRad = (action.angle * Math.PI) / 180;
       const buttonRadius = 35;
       const bx = Math.cos(angleRad) * buttonRadius;

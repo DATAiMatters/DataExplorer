@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Target, Trash2, Pencil, Link2, MoreVertical, Unlink, Network, ShieldCheck, Play, ArrowRight, Activity, Zap, Database, Box, Layers } from 'lucide-react';
+import { Plus, Target, Trash2, Pencil, Link2, MoreVertical, Unlink, Network, ShieldCheck, Play, ArrowRight, Activity, Zap, Database, Box } from 'lucide-react';
 import { OutcomeCanvas } from './visualizations/OutcomeCanvas';
 import type {
   BusinessOutcome,
