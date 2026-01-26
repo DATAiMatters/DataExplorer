@@ -95,9 +95,9 @@ const nodeTypeToLayer: Record<NodeType, LayerIndex> = {
 };
 
 const layerLabels: Record<LayerIndex, string> = {
-  0: 'Goals',
+  0: 'Outcome (Goal)',
   1: 'KPIs',
-  2: 'Decisions',
+  2: 'Decision (Business Process)',
   3: 'Signals',
   4: 'Rules',
   5: 'Data Products',
@@ -144,7 +144,80 @@ export function OutcomeLineage() {
   const [importSource, setImportSource] = useState('ptp-sample');
   const [importLabel, setImportLabel] = useState('PTP_Demo');
   const [importDb, _setImportDb] = useState('neo4j');
+  const [focusedOutcome, setFocusedOutcome] = useState<string | null>('On-Time Supplier Payment');
   const { toast } = useToast();
+
+  // Find all nodes connected to a focused outcome via BFS traversal
+  // The relationship model has bidirectional links:
+  // - Goal → KPI (isMeasuredBy)
+  // - Decision → Goal (protects) - reverse direction!
+  // - Signal → Decision (degrades)
+  // - Signal → Rule (isDerivedFrom)
+  // - Rule → DataProduct (validates)
+  // - DataProduct → Dataset (uses)
+  const getConnectedNodes = (
+    nodes: LayeredNode[],
+    links: LayeredLink[],
+    focusedOutcomeName: string
+  ): Set<string> => {
+    const connectedIds = new Set<string>();
+
+    // Find the focused outcome node(s)
+    const outcomeNodes = nodes.filter(
+      n => (n.type === 'goal' || n.type === 'outcome') &&
+           n.label.toLowerCase().includes(focusedOutcomeName.toLowerCase())
+    );
+
+    if (outcomeNodes.length === 0) return connectedIds;
+
+    // Add all outcome nodes
+    for (const node of outcomeNodes) {
+      connectedIds.add(node.id);
+    }
+
+    // Build bidirectional adjacency list for full traversal
+    const adjacencyOut = new Map<string, string[]>();
+    const adjacencyIn = new Map<string, string[]>();
+    for (const link of links) {
+      // source -> target
+      if (!adjacencyOut.has(link.source)) {
+        adjacencyOut.set(link.source, []);
+      }
+      adjacencyOut.get(link.source)!.push(link.target);
+
+      // target <- source (reverse)
+      if (!adjacencyIn.has(link.target)) {
+        adjacencyIn.set(link.target, []);
+      }
+      adjacencyIn.get(link.target)!.push(link.source);
+    }
+
+    // BFS traversing both directions to capture full lineage chain
+    const queue = [...outcomeNodes.map(n => n.id)];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+
+      // Traverse outgoing edges (e.g., Goal -> KPI)
+      const outNeighbors = adjacencyOut.get(current) || [];
+      for (const neighbor of outNeighbors) {
+        if (!connectedIds.has(neighbor)) {
+          connectedIds.add(neighbor);
+          queue.push(neighbor);
+        }
+      }
+
+      // Traverse incoming edges (e.g., Decision -> Goal means follow from Goal back to Decision)
+      const inNeighbors = adjacencyIn.get(current) || [];
+      for (const neighbor of inNeighbors) {
+        if (!connectedIds.has(neighbor)) {
+          connectedIds.add(neighbor);
+          queue.push(neighbor);
+        }
+      }
+    }
+
+    return connectedIds;
+  };
 
   // Local store data (legacy)
   const outcomes = useAppStore((s) => s.businessOutcomes);
@@ -328,8 +401,27 @@ export function OutcomeLineage() {
     return { nodes, links };
   }, [outcomes, kpis, cdes, dqRules]);
 
-  // Select data source
-  const graphData = dataSource === 'neo4j' ? neo4jGraphData : localGraphData;
+  // Select data source and apply focused outcome filter
+  const graphData = useMemo(() => {
+    const sourceData = dataSource === 'neo4j' ? neo4jGraphData : localGraphData;
+
+    // If no focused outcome, return all data
+    if (!focusedOutcome) return sourceData;
+
+    // Get connected node IDs
+    const connectedIds = getConnectedNodes(sourceData.nodes, sourceData.links, focusedOutcome);
+
+    // If no nodes found, return all data
+    if (connectedIds.size === 0) return sourceData;
+
+    // Filter nodes and links
+    const filteredNodes = sourceData.nodes.filter(n => connectedIds.has(n.id));
+    const filteredLinks = sourceData.links.filter(
+      l => connectedIds.has(l.source) && connectedIds.has(l.target)
+    );
+
+    return { nodes: filteredNodes, links: filteredLinks };
+  }, [dataSource, neo4jGraphData, localGraphData, focusedOutcome]);
 
   // Calculate node positions using layered layout
   const layoutData = useMemo(() => {
@@ -680,6 +772,24 @@ export function OutcomeLineage() {
             </Button>
           </div>
 
+          {/* Focused Outcome Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-400">Focus:</span>
+            <select
+              className="px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs"
+              value={focusedOutcome || ''}
+              onChange={e => setFocusedOutcome(e.target.value || null)}
+            >
+              <option value="">All Outcomes</option>
+              {(dataSource === 'neo4j' ? neo4jGraphData : localGraphData).nodes
+                .filter(n => n.type === 'goal' || n.type === 'outcome')
+                .map(n => (
+                  <option key={n.id} value={n.label}>{n.label}</option>
+                ))
+              }
+            </select>
+          </div>
+
           {dataSource === 'neo4j' && (
             <>
               <Button
@@ -711,19 +821,19 @@ export function OutcomeLineage() {
           )}
 
           <div className="flex items-center gap-1 text-xs text-zinc-500">
-            <span className="text-emerald-400">Goals</span>
+            <span className="text-emerald-400">Outcome</span>
             <ArrowRight className="w-3 h-3" />
-            <span className="text-blue-400">KPIs</span>
+            <span className="text-blue-400">KPI</span>
             <ArrowRight className="w-3 h-3" />
-            <span className="text-orange-400">Decisions</span>
+            <span className="text-orange-400">Decision</span>
             <ArrowRight className="w-3 h-3" />
-            <span className="text-yellow-400">Signals</span>
+            <span className="text-yellow-400">Signal</span>
             <ArrowRight className="w-3 h-3" />
-            <span className="text-violet-400">Rules</span>
+            <span className="text-violet-400">Rule</span>
             <ArrowRight className="w-3 h-3" />
-            <span className="text-cyan-400">Products</span>
+            <span className="text-cyan-400">Data Product</span>
             <ArrowRight className="w-3 h-3" />
-            <span className="text-indigo-400">Datasets</span>
+            <span className="text-indigo-400">Dataset</span>
           </div>
         </div>
 
