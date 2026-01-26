@@ -5,6 +5,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import graph from './routes/graph';
 import skpImport from './routes/skp-import';
+import health from './routes/health';
 import { closeDriver } from './lib/neo4j';
 
 const app = new Hono();
@@ -17,10 +18,8 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Health check
-app.get('/api/health', (c) => c.json({ status: 'ok' }));
-
 // Mount routes
+app.route('/api/health', health);
 app.route('/api/graph', graph);
 app.route('/api/skp-import', skpImport);
 

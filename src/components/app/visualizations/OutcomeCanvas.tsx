@@ -4,7 +4,7 @@ import { useAppStore } from '@/store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { ZoomIn, ZoomOut, RotateCcw, Target, Network, GitBranch } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Target, Network, GitBranch, Database, RefreshCw, HardDrive } from 'lucide-react';
 import { OutcomeLineage } from './OutcomeLineage';
 import { useToast } from '@/hooks/use-toast';
 import type { BusinessOutcome, KPI, CriticalDataElement, DataQualityRule } from '@/types';
@@ -51,7 +51,28 @@ const edgeTypeColors: Record<string, string> = {
   'enforces': '#eab308',
   'defines': '#6366f1',
   'impacts': '#ef4444',
+  'RELATION': '#71717a', // Default for Neo4j relationships
 };
+
+// Neo4j graph response types
+interface Neo4jNode {
+  id: string;
+  labels: string[];
+  properties: Record<string, unknown>;
+}
+
+interface Neo4jRelationship {
+  id: string;
+  type: string;
+  properties: Record<string, unknown>;
+  startNodeId: string;
+  endNodeId: string;
+}
+
+interface Neo4jGraphResponse {
+  nodes: Neo4jNode[];
+  relationships: Neo4jRelationship[];
+}
 
 export function OutcomeCanvas() {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -66,11 +87,39 @@ export function OutcomeCanvas() {
   const { toast } = useToast();
   const [importing, setImporting] = useState(false);
   const [importDb, setImportDb] = useState('skp');
+  const [dataSource, setDataSource] = useState<'local' | 'neo4j'>('local');
+  const [neo4jData, setNeo4jData] = useState<Neo4jGraphResponse | null>(null);
+  const [loadingNeo4j, setLoadingNeo4j] = useState(false);
 
   const outcomes = useAppStore((s) => s.businessOutcomes);
   const kpis = useAppStore((s) => s.kpis);
   const cdes = useAppStore((s) => s.cdes);
   const dqRules = useAppStore((s) => s.dqRules);
+
+  // Fetch Neo4j graph data
+  const fetchNeo4jGraph = async () => {
+    setLoadingNeo4j(true);
+    try {
+      const res = await fetch('/api/graph?limit=500');
+      if (!res.ok) {
+        throw new Error(`Failed to fetch graph: ${res.status}`);
+      }
+      const data: Neo4jGraphResponse = await res.json();
+      setNeo4jData(data);
+      toast({
+        title: 'Graph Loaded',
+        description: `${data.nodes.length} nodes, ${data.relationships.length} relationships`,
+      });
+    } catch (e) {
+      toast({
+        title: 'Failed to load Neo4j graph',
+        description: String(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingNeo4j(false);
+    }
+  };
 
   // Helper to calculate DQ score for a CDE based on its rules
   const calculateCdeDqScore = (cdeId: string): number | null => {
@@ -95,8 +144,8 @@ export function OutcomeCanvas() {
     return scores.reduce((sum, s) => sum + s, 0) / scores.length;
   };
 
-  // Build graph data from business outcomes entities
-  const graphData = useMemo(() => {
+  // Build graph data from local business outcomes entities
+  const localGraphData = useMemo(() => {
     const nodes: CanvasNode[] = [];
     const links: CanvasLink[] = [];
     const nodeMap = new Map<string, CanvasNode>();
@@ -194,15 +243,55 @@ export function OutcomeCanvas() {
     return { nodes, links };
   }, [outcomes, kpis, cdes, dqRules]);
 
+  // Convert Neo4j data to canvas format
+  const neo4jGraphData = useMemo(() => {
+    if (!neo4jData) return { nodes: [], links: [] };
+
+    const nodes: CanvasNode[] = neo4jData.nodes.map((n) => {
+      // Map Neo4j labels to our node types
+      const label = n.labels[0]?.toLowerCase() || 'dataset';
+      const nodeType: NodeType = ['outcome', 'kpi', 'cde', 'rule', 'goal', 'policy', 'dataset'].includes(label)
+        ? (label as NodeType)
+        : 'dataset';
+
+      return {
+        id: n.id,
+        label: (n.properties.name as string) || (n.properties.id as string) || n.id,
+        type: nodeType,
+        entity: n.properties,
+        dqScore: null,
+      };
+    });
+
+    const links: CanvasLink[] = neo4jData.relationships.map((r) => ({
+      source: r.startNodeId,
+      target: r.endNodeId,
+      type: (r.type as CanvasLink['type']) || 'impacts',
+    }));
+
+    return { nodes, links };
+  }, [neo4jData]);
+
+  // Select data source
+  const graphData = dataSource === 'neo4j' ? neo4jGraphData : localGraphData;
+
   const stats = useMemo(() => {
+    if (dataSource === 'neo4j') {
+      return {
+        nodes: graphData.nodes.length,
+        relationships: graphData.links.length,
+        source: 'Neo4j',
+      };
+    }
     return {
       outcomes: outcomes.length,
       kpis: kpis.length,
       cdes: cdes.length,
       rules: dqRules.length,
       links: graphData.links.length,
+      source: 'Local',
     };
-  }, [outcomes, kpis, cdes, dqRules, graphData.links]);
+  }, [dataSource, outcomes, kpis, cdes, dqRules, graphData]);
 
   // --- Traceability Path Highlighting ---
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -237,8 +326,11 @@ export function OutcomeCanvas() {
         const relCount = data.relationships?.success ?? data.relationships?.total ?? 0;
         toast({
           title: 'SKP Import Complete',
-          description: `${assetCount} assets, ${relCount} relationships imported.`
+          description: `${assetCount} assets, ${relCount} relationships imported. Refreshing graph...`
         });
+        // Auto-switch to Neo4j view and refresh
+        setDataSource('neo4j');
+        await fetchNeo4jGraph();
       } else {
         toast({
           title: 'SKP Import Error',
@@ -577,6 +669,43 @@ export function OutcomeCanvas() {
             />
           </div>
 
+          {/* Data Source Toggle */}
+          <div className="flex items-center bg-zinc-800 rounded-lg p-0.5 ml-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDataSource('local')}
+              className={`h-7 px-3 text-xs ${dataSource === 'local' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              <HardDrive className="w-3.5 h-3.5 mr-1.5" />
+              Local
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDataSource('neo4j');
+                if (!neo4jData) fetchNeo4jGraph();
+              }}
+              className={`h-7 px-3 text-xs ${dataSource === 'neo4j' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              <Database className="w-3.5 h-3.5 mr-1.5" />
+              Neo4j
+            </Button>
+          </div>
+
+          {dataSource === 'neo4j' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchNeo4jGraph}
+              disabled={loadingNeo4j}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loadingNeo4j ? 'animate-spin' : ''}`} />
+              {loadingNeo4j ? 'Loading...' : 'Refresh'}
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"
@@ -597,11 +726,22 @@ export function OutcomeCanvas() {
         </div>
 
         <div className="flex items-center gap-3 text-xs text-zinc-500">
-          <span>{stats.outcomes} Outcomes</span>
-          <span>{stats.kpis} KPIs</span>
-          <span>{stats.cdes} CDEs</span>
-          <span>{stats.rules} Rules</span>
-          <span>{stats.links} Links</span>
+          {dataSource === 'neo4j' ? (
+            <>
+              <span className="text-emerald-500">{stats.source}</span>
+              <span>{(stats as { nodes: number }).nodes} Nodes</span>
+              <span>{(stats as { relationships: number }).relationships} Relationships</span>
+            </>
+          ) : (
+            <>
+              <span className="text-blue-500">{stats.source}</span>
+              <span>{(stats as { outcomes: number }).outcomes} Outcomes</span>
+              <span>{(stats as { kpis: number }).kpis} KPIs</span>
+              <span>{(stats as { cdes: number }).cdes} CDEs</span>
+              <span>{(stats as { rules: number }).rules} Rules</span>
+              <span>{(stats as { links: number }).links} Links</span>
+            </>
+          )}
         </div>
       </div>
 
