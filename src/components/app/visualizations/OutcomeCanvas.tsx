@@ -519,6 +519,17 @@ export function OutcomeCanvas() {
     }
   }
 
+  // Keyboard handler for fullscreen mode (Escape to exit)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
   useEffect(() => {
     if (!svgRef.current || graphData.nodes.length === 0) return;
 
@@ -1109,7 +1120,7 @@ export function OutcomeCanvas() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-zinc-950' : 'h-full'} flex flex-col`}>
       {/* Controls - hidden in fullscreen */}
       {!isFullscreen && (
       <>
@@ -1311,9 +1322,9 @@ export function OutcomeCanvas() {
 
       {/* Graph Area with Fixed Left Legend */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Fixed Left Legend Panel - hidden in fullscreen */}
-        {showLegend && !isFullscreen && (
-          <div className="w-48 flex-shrink-0 bg-zinc-900 border-r border-zinc-800 overflow-y-auto">
+        {/* Fixed Left Legend Panel - floating in fullscreen, docked otherwise */}
+        {showLegend && (
+          <div className={`${isFullscreen ? 'absolute top-16 left-4 z-10 rounded-lg border border-zinc-700 shadow-xl max-h-[calc(100vh-8rem)] overflow-y-auto' : 'w-48 flex-shrink-0 border-r border-zinc-800'} bg-zinc-900 overflow-y-auto`}>
             <div className="p-3">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-zinc-300">Traceability Chain</span>
@@ -1514,14 +1525,47 @@ export function OutcomeCanvas() {
               Legend
             </button>
           )}
-          {/* Fullscreen Toggle Button */}
-          <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="absolute top-2 right-2 z-10 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 p-2 rounded border border-zinc-700"
-            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-          >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
+
+          {/* Fullscreen Controls - minimal floating bar */}
+          {isFullscreen && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-2 bg-zinc-900/90 backdrop-blur-sm border border-zinc-700 rounded-lg px-3 py-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleZoom(1.3)} title="Zoom in">
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleZoom(0.7)} title="Zoom out">
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleResetZoom} title="Reset zoom">
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+              <div className="w-px h-6 bg-zinc-700 mx-1" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowLegend(!showLegend)} title="Toggle legend">
+                <Target className="w-4 h-4" />
+              </Button>
+              <div className="w-px h-6 bg-zinc-700 mx-1" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-3 text-xs text-zinc-300 hover:text-white hover:bg-zinc-700"
+                onClick={() => setIsFullscreen(false)}
+                title="Exit fullscreen (Esc)"
+              >
+                <Minimize2 className="w-4 h-4 mr-1.5" />
+                Exit
+              </Button>
+            </div>
+          )}
+
+          {/* Fullscreen Toggle Button - only shown when not fullscreen */}
+          {!isFullscreen && (
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="absolute top-2 right-2 z-10 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 p-2 rounded border border-zinc-700"
+              title="Fullscreen"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+          )}
           <svg ref={svgRef} className="w-full h-full bg-zinc-950" />
 
           {/* Hover Panel */}
