@@ -132,6 +132,14 @@ export function OutcomeCanvas() {
   const [showAISuggestionPanel, setShowAISuggestionPanel] = useState(false);
   const { toast } = useToast();
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{
+    phase: string;
+    message: string;
+    step?: string;
+    current?: number;
+    total?: number;
+    type?: string;
+  } | null>(null);
   const [importDb, setImportDb] = useState('neo4j');
   const [importSource, setImportSource] = useState('skp');
   const [importLabel, setImportLabel] = useState('');
@@ -397,45 +405,86 @@ export function OutcomeCanvas() {
 
   async function handleSKPImport() {
     setImporting(true);
+    setImportProgress({ phase: 'connecting', message: 'Connecting to SKP API...' });
+
     try {
       const sourceParam = importSource ? `&source=${encodeURIComponent(importSource)}` : '';
       const labelParam = importLabel ? `&label=${encodeURIComponent(importLabel)}` : '';
-      const res = await fetch(`/api/skp-import?db=${encodeURIComponent(importDb)}${sourceParam}${labelParam}`);
-      const data = await res.json();
-      if (data.success) {
-        // Handle new response structure with summary.nodes/relationships
-        const nodeCount = data.summary?.nodes?.success ?? data.assets?.success ?? 0;
-        const relCount = data.summary?.relationships?.success ?? data.relationships?.success ?? 0;
 
-        // Build detailed breakdown if available
-        let details = '';
-        if (data.details) {
-          const parts: string[] = [];
-          for (const [type, result] of Object.entries(data.details)) {
-            const r = result as { success: number };
-            if (r.success > 0) {
-              parts.push(`${r.success} ${type}`);
+      // Use streaming endpoint for progress updates
+      const eventSource = new EventSource(`/api/skp-import/stream?db=${encodeURIComponent(importDb)}${sourceParam}${labelParam}`);
+
+      await new Promise<void>((resolve, reject) => {
+        eventSource.addEventListener('phase', (e) => {
+          const data = JSON.parse(e.data);
+          setImportProgress({
+            phase: data.phase,
+            message: data.message,
+            total: data.totalItems,
+          });
+        });
+
+        eventSource.addEventListener('progress', (e) => {
+          const data = JSON.parse(e.data);
+          setImportProgress(prev => ({
+            ...prev!,
+            step: data.step,
+            current: data.current,
+            total: data.total || prev?.total,
+            type: data.type,
+          }));
+        });
+
+        eventSource.addEventListener('complete', (e) => {
+          const data = JSON.parse(e.data);
+          eventSource.close();
+
+          if (data.success) {
+            const nodeCount = data.summary?.nodes?.success ?? 0;
+            const relCount = data.summary?.relationships?.success ?? 0;
+
+            let details = '';
+            if (data.details) {
+              const parts: string[] = [];
+              for (const [type, result] of Object.entries(data.details)) {
+                const r = result as { success: number };
+                if (r.success > 0) {
+                  parts.push(`${r.success} ${type}`);
+                }
+              }
+              if (parts.length > 0) {
+                details = ` (${parts.join(', ')})`;
+              }
             }
-          }
-          if (parts.length > 0) {
-            details = ` (${parts.join(', ')})`;
-          }
-        }
 
-        toast({
-          title: 'SKP Import Complete',
-          description: `${nodeCount} nodes${details}, ${relCount} relationships imported. Refreshing graph...`
+            toast({
+              title: 'SKP Import Complete',
+              description: `${nodeCount} nodes${details}, ${relCount} relationships imported.`
+            });
+          }
+          resolve();
         });
-        // Auto-switch to Neo4j view and refresh
-        setDataSource('neo4j');
-        await fetchNeo4jGraph();
-      } else {
-        toast({
-          title: 'SKP Import Error',
-          description: data.error || data.details || 'Unknown error',
-          variant: 'destructive',
+
+        eventSource.addEventListener('error', (e) => {
+          if (e instanceof MessageEvent) {
+            const data = JSON.parse(e.data);
+            reject(new Error(data.message || 'Unknown error'));
+          } else {
+            reject(new Error('Connection error'));
+          }
+          eventSource.close();
         });
-      }
+
+        eventSource.onerror = () => {
+          eventSource.close();
+          reject(new Error('Connection lost'));
+        };
+      });
+
+      // Auto-switch to Neo4j view and refresh
+      setDataSource('neo4j');
+      await fetchNeo4jGraph();
+
     } catch (e) {
       toast({
         title: 'SKP Import Error',
@@ -444,6 +493,7 @@ export function OutcomeCanvas() {
       });
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   }
 
@@ -1278,24 +1328,52 @@ export function OutcomeCanvas() {
           />
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-zinc-500">
-          {dataSource === 'neo4j' ? (
-            <>
-              <span className="text-emerald-500">{stats.source}</span>
-              <span>{(stats as { nodes: number }).nodes} Nodes</span>
-              <span>{(stats as { relationships: number }).relationships} Relationships</span>
-            </>
-          ) : (
-            <>
-              <span className="text-blue-500">{stats.source}</span>
-              <span>{(stats as { outcomes: number }).outcomes} Outcomes</span>
-              <span>{(stats as { kpis: number }).kpis} KPIs</span>
-              <span>{(stats as { cdes: number }).cdes} CDEs</span>
-              <span>{(stats as { rules: number }).rules} Rules</span>
-              <span>{(stats as { links: number }).links} Links</span>
-            </>
-          )}
-        </div>
+        {/* Import Progress Indicator */}
+        {importProgress && (
+          <div className="flex items-center gap-3 bg-zinc-800/80 rounded-lg px-3 py-1.5 border border-zinc-700">
+            <div className="animate-spin w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full" />
+            <div className="flex flex-col">
+              <span className="text-xs text-zinc-200 font-medium">{importProgress.message}</span>
+              {importProgress.step && (
+                <span className="text-xs text-zinc-400">{importProgress.step}</span>
+              )}
+            </div>
+            {importProgress.current !== undefined && importProgress.total !== undefined && importProgress.total > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-32 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all duration-300"
+                    style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs text-zinc-400 w-12 text-right">
+                  {Math.round((importProgress.current / importProgress.total) * 100)}%
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!importProgress && (
+          <div className="flex items-center gap-3 text-xs text-zinc-500">
+            {dataSource === 'neo4j' ? (
+              <>
+                <span className="text-emerald-500">{stats.source}</span>
+                <span>{(stats as { nodes: number }).nodes} Nodes</span>
+                <span>{(stats as { relationships: number }).relationships} Relationships</span>
+              </>
+            ) : (
+              <>
+                <span className="text-blue-500">{stats.source}</span>
+                <span>{(stats as { outcomes: number }).outcomes} Outcomes</span>
+                <span>{(stats as { kpis: number }).kpis} KPIs</span>
+                <span>{(stats as { cdes: number }).cdes} CDEs</span>
+                <span>{(stats as { rules: number }).rules} Rules</span>
+                <span>{(stats as { links: number }).links} Links</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Semantic Query/Filter Bar */}

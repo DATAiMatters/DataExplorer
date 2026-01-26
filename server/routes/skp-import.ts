@@ -597,4 +597,376 @@ skpImport.delete('/', async (c) => {
   }
 });
 
+// Streaming import endpoint with progress updates - PARALLELIZED version
+skpImport.get('/stream', async (c) => {
+  const db = c.req.query('db') || 'neo4j';
+  const source = c.req.query('source') || 'skp';
+  const label = c.req.query('label');
+  const importedAt = new Date().toISOString();
+  const driver = getDriver();
+
+  let safeLabel = '';
+  if (label) {
+    safeLabel = label.replace(/[^a-zA-Z0-9_]/g, '_');
+    if (!/^[a-zA-Z_]/.test(safeLabel)) {
+      safeLabel = '_' + safeLabel;
+    }
+  }
+
+  const labelClause = safeLabel ? `SET n:\`${safeLabel}\`` : '';
+
+  // Set up SSE response
+  c.header('Content-Type', 'text/event-stream');
+  c.header('Cache-Control', 'no-cache');
+  c.header('Connection', 'keep-alive');
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      };
+
+      const session = driver.session({ database: db });
+      const results: Record<string, ImportResult> = {};
+      const relationshipResults: RelationshipResult = {
+        total: 0,
+        success: 0,
+        failed: 0,
+        errors: [],
+      };
+
+      try {
+        // Phase 1: Fetch from SKP API - ALL IN PARALLEL
+        send('phase', { phase: 'fetch', message: 'Fetching data from SKP API (parallel)...' });
+        send('progress', { step: 'Fetching all entity types in parallel...', current: 0, total: 6 });
+
+        const startFetch = Date.now();
+        const [terms, datasets, rules, policies, goals, systems] = await Promise.all([
+          fetchPaginated<SKPTerm>('terms'),
+          fetchPaginated<SKPDataset>('datasets'),
+          fetchPaginated<SKPRule>('rules'),
+          fetchPaginated<SKPPolicy>('policies'),
+          fetchPaginated<SKPGoal>('goals'),
+          fetchPaginated<SKPSystem>('systems'),
+        ]);
+        const fetchTime = ((Date.now() - startFetch) / 1000).toFixed(1);
+
+        send('progress', {
+          step: `Fetched all in ${fetchTime}s: ${terms.length} terms, ${datasets.length} datasets, ${rules.length} rules, ${policies.length} policies, ${goals.length} goals, ${systems.length} systems`,
+          current: 6,
+          total: 6
+        });
+
+        // Phase 2: Import to Neo4j using BATCHED operations
+        send('phase', { phase: 'import', message: 'Importing to Neo4j (batched)...' });
+
+        const BATCH_SIZE = 50; // Process 50 items per batch query
+
+        // Helper for batched import
+        async function batchImport<T>(
+          items: T[],
+          typeName: string,
+          query: string,
+          mapFn: (item: T) => Record<string, unknown>
+        ): Promise<ImportResult> {
+          const result: ImportResult = { total: items.length, success: 0, failed: 0, errors: [] };
+
+          for (let i = 0; i < items.length; i += BATCH_SIZE) {
+            const batch = items.slice(i, i + BATCH_SIZE);
+            const batchData = batch.map(mapFn);
+
+            try {
+              await session.run(query, { batch: batchData, source, importedAt });
+              result.success += batch.length;
+            } catch (e) {
+              // Fall back to individual inserts for this batch
+              for (const item of batch) {
+                try {
+                  await session.run(query.replace('UNWIND $batch AS row', 'WITH $row AS row'), {
+                    row: mapFn(item),
+                    source,
+                    importedAt
+                  });
+                  result.success++;
+                } catch (err) {
+                  result.failed++;
+                  result.errors.push({
+                    id: (item as { id?: string }).id || 'unknown',
+                    error: err instanceof Error ? err.message : String(err),
+                  });
+                }
+              }
+            }
+
+            send('progress', {
+              step: `Importing ${typeName}: ${Math.min(i + BATCH_SIZE, items.length)}/${items.length}`,
+              current: result.success + result.failed,
+              total: items.length,
+              type: typeName,
+            });
+          }
+
+          return result;
+        }
+
+        // Import Terms (batched)
+        results.terms = await batchImport(terms, 'terms',
+          `UNWIND $batch AS row
+           MERGE (n:Term {id: row.id})
+           SET n.name = row.name,
+               n.definition = row.definition,
+               n.status = row.status,
+               n.subject_area = row.subject_area,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (term) => ({
+            id: term.id,
+            name: term.name,
+            definition: term.definition || '',
+            status: term.status || '',
+            subject_area: term.subject_area || '',
+          })
+        );
+
+        // Import Datasets (batched, but fields need individual handling for relationships)
+        results.datasets = await batchImport(datasets, 'datasets',
+          `UNWIND $batch AS row
+           MERGE (n:Dataset {id: row.id})
+           SET n.name = row.name,
+               n.description = row.description,
+               n.system_name = row.system_name,
+               n.subject_area = row.subject_area,
+               n.field_count = row.field_count,
+               n.categories = row.categories,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (ds) => ({
+            id: ds.id,
+            name: ds.name,
+            description: ds.description || '',
+            system_name: ds.system_name || '',
+            subject_area: ds.subject_area || '',
+            field_count: ds.field_count || 0,
+            categories: ds.categories || [],
+          })
+        );
+
+        // Fetch and import fields in parallel batches (skip individual field fetch to save time)
+        send('progress', { step: 'Fetching dataset fields in parallel...', current: 0, total: datasets.length });
+        results.fields = { total: 0, success: 0, failed: 0, errors: [] };
+
+        // Fetch fields for datasets in parallel batches of 10
+        const FIELD_FETCH_BATCH = 10;
+        const allFields: Array<{ datasetId: string; field: SKPField }> = [];
+
+        for (let i = 0; i < datasets.length; i += FIELD_FETCH_BATCH) {
+          const batch = datasets.slice(i, i + FIELD_FETCH_BATCH);
+          const fieldResults = await Promise.all(
+            batch.map(async (ds) => {
+              const fields = await fetchDatasetFields(ds.id);
+              return fields.map(f => ({ datasetId: ds.id, field: f }));
+            })
+          );
+          fieldResults.flat().forEach(f => allFields.push(f));
+
+          send('progress', {
+            step: `Fetching fields: ${Math.min(i + FIELD_FETCH_BATCH, datasets.length)}/${datasets.length} datasets (${allFields.length} fields)`,
+            current: Math.min(i + FIELD_FETCH_BATCH, datasets.length),
+            total: datasets.length,
+          });
+        }
+
+        // Batch import all fields
+        if (allFields.length > 0) {
+          results.fields.total = allFields.length;
+          for (let i = 0; i < allFields.length; i += BATCH_SIZE) {
+            const batch = allFields.slice(i, i + BATCH_SIZE);
+            try {
+              await session.run(
+                `UNWIND $batch AS row
+                 MERGE (f:Field {id: row.fieldId})
+                 SET f.name = row.name,
+                     f.description = row.description,
+                     f.data_type = row.data_type,
+                     f.is_nullable = row.is_nullable,
+                     f.is_primary_key = row.is_primary_key,
+                     f.dataset_id = row.dataset_id,
+                     f.source = $source,
+                     f.imported_at = $importedAt
+                 ${labelClause}
+                 WITH f, row
+                 MATCH (d:Dataset {id: row.dataset_id})
+                 MERGE (d)-[:HAS_FIELD]->(f)`,
+                {
+                  batch: batch.map(({ datasetId, field }) => ({
+                    fieldId: field.id || `${datasetId}:${field.name}`,
+                    name: field.name,
+                    description: field.description || '',
+                    data_type: field.data_type || '',
+                    is_nullable: field.is_nullable ?? true,
+                    is_primary_key: field.is_primary_key ?? false,
+                    dataset_id: datasetId,
+                  })),
+                  source,
+                  importedAt,
+                }
+              );
+              results.fields.success += batch.length;
+            } catch {
+              results.fields.failed += batch.length;
+            }
+          }
+          send('progress', { step: `Imported ${results.fields.success} fields`, current: allFields.length, total: allFields.length });
+        }
+
+        // Import Rules (batched)
+        results.rules = await batchImport(rules, 'rules',
+          `UNWIND $batch AS row
+           MERGE (n:Rule {id: row.id})
+           SET n.asset_id = row.asset_id,
+               n.name = row.statement,
+               n.statement = row.statement,
+               n.implication = row.implication,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (rule) => ({
+            id: rule.id,
+            asset_id: rule.asset_id || '',
+            statement: rule.statement || rule.asset_id || rule.id,
+            implication: rule.implication || '',
+          })
+        );
+
+        // Import Policies (batched)
+        results.policies = await batchImport(policies, 'policies',
+          `UNWIND $batch AS row
+           MERGE (n:Policy {id: row.id})
+           SET n.name = row.name,
+               n.description = row.description,
+               n.status = row.status,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (policy) => ({
+            id: policy.id,
+            name: policy.name,
+            description: policy.description || '',
+            status: policy.status || '',
+          })
+        );
+
+        // Import Goals (batched)
+        results.goals = await batchImport(goals, 'goals',
+          `UNWIND $batch AS row
+           MERGE (n:Goal {id: row.id})
+           SET n.asset_id = row.asset_id,
+               n.name = row.summary,
+               n.summary = row.summary,
+               n.description = row.description,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (goal) => ({
+            id: goal.id,
+            asset_id: goal.asset_id || '',
+            summary: goal.summary || goal.asset_id || goal.id,
+            description: goal.description || '',
+          })
+        );
+
+        // Import Systems (batched)
+        results.systems = await batchImport(systems, 'systems',
+          `UNWIND $batch AS row
+           MERGE (n:System {id: row.id})
+           SET n.asset_id = row.asset_id,
+               n.name = row.name,
+               n.description = row.description,
+               n.source = $source,
+               n.imported_at = $importedAt
+           ${labelClause}`,
+          (system) => ({
+            id: system.id,
+            asset_id: system.asset_id || '',
+            name: system.name || system.asset_id || system.id,
+            description: system.description || '',
+          })
+        );
+
+        // Phase 3: Create relationships (batched)
+        send('phase', { phase: 'relationships', message: 'Creating relationships...' });
+
+        const allRelationships: Array<{ sourceId: string; targetId: string; relType: string }> = [];
+        for (const term of terms) {
+          if (term.relationships && term.relationships.length > 0) {
+            for (const rel of term.relationships) {
+              allRelationships.push({
+                sourceId: term.id,
+                targetId: rel.id,
+                relType: rel.type || 'RELATED',
+              });
+            }
+          }
+        }
+
+        relationshipResults.total = allRelationships.length;
+        if (allRelationships.length > 0) {
+          for (let i = 0; i < allRelationships.length; i += BATCH_SIZE) {
+            const batch = allRelationships.slice(i, i + BATCH_SIZE);
+            try {
+              await session.run(
+                `UNWIND $batch AS row
+                 MATCH (a:Term {id: row.sourceId})
+                 MATCH (b {id: row.targetId})
+                 MERGE (a)-[r:RELATES_TO]->(b)
+                 SET r.type = row.relType, r.source = $source, r.imported_at = $importedAt`,
+                { batch, source, importedAt }
+              );
+              relationshipResults.success += batch.length;
+            } catch {
+              relationshipResults.failed += batch.length;
+            }
+          }
+        }
+
+        // Calculate totals
+        const totalNodes = Object.values(results).reduce((sum, r) => sum + r.total, 0);
+        const successNodes = Object.values(results).reduce((sum, r) => sum + r.success, 0);
+        const failedNodes = Object.values(results).reduce((sum, r) => sum + r.failed, 0);
+
+        // Send completion
+        send('complete', {
+          success: true,
+          summary: {
+            nodes: { total: totalNodes, success: successNodes, failed: failedNodes },
+            relationships: {
+              total: relationshipResults.total,
+              success: relationshipResults.success,
+              failed: relationshipResults.failed,
+            },
+          },
+          details: results,
+        });
+
+      } catch (e) {
+        send('error', { message: e instanceof Error ? e.message : 'Unknown error' });
+      } finally {
+        await session.close();
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+});
+
 export default skpImport;
