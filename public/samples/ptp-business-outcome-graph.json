@@ -1,0 +1,737 @@
+{
+  "meta": {
+    "schemaVersion": "v1",
+    "tenant": "demo",
+    "domain": "PTP",
+    "createdAt": "2026-01-25T00:00:00Z",
+    "notes": [
+      "Procure-to-Pay business outcome graph demonstrating the full traceability model:",
+      "Goal → KPI → Decision → Signal → Rule → DataProduct → Dataset"
+    ]
+  },
+  "assetTypes": ["Goal", "KPI", "Decision", "Signal", "Rule", "DataProduct", "Dataset"],
+  "relationshipTypes": ["isMeasuredBy", "protects", "degrades", "isDerivedFrom", "validates", "uses"],
+  "assets": {
+    "goals": [
+      {
+        "id": "GOAL-PTP-001",
+        "name": "On-Time Supplier Payment",
+        "description": "Ensure suppliers are paid on or before due date to protect supply continuity and avoid penalties.",
+        "category": "operational",
+        "owner": "AP Director",
+        "targetValue": "≥ 98% on-time supplier payments",
+        "status": "active",
+        "tags": ["payment", "supplier", "cash-flow"],
+        "processAreaIds": ["PROC-PTP"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "GOAL-PTP-002",
+        "name": "Minimize Early Payment Discount Loss",
+        "description": "Capture available early payment discounts by paying within discount terms window.",
+        "category": "financial",
+        "owner": "Treasury Manager",
+        "targetValue": "≥ 90% discount capture rate",
+        "status": "active",
+        "tags": ["discount", "cash-optimization"],
+        "processAreaIds": ["PROC-PTP"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      }
+    ],
+    "kpis": [
+      {
+        "id": "KPI-PTP-001",
+        "name": "% Supplier Payments On-Time",
+        "description": "Percentage of supplier invoices paid on or before the due date",
+        "formula": "(Invoices Paid On-Time / Total Invoices Due) × 100",
+        "unit": "PERCENT",
+        "direction": "higher_is_better",
+        "targetValue": 98,
+        "warningThreshold": 95,
+        "criticalThreshold": 90,
+        "frequency": "weekly",
+        "owner": "AP Manager",
+        "status": "active",
+        "outcomeIds": ["GOAL-PTP-001"],
+        "cdeIds": [],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "KPI-PTP-002",
+        "name": "Early Payment Discount Capture Rate",
+        "description": "Percentage of available early payment discounts successfully captured",
+        "formula": "(Discounts Captured / Discounts Available) × 100",
+        "unit": "PERCENT",
+        "direction": "higher_is_better",
+        "targetValue": 90,
+        "warningThreshold": 80,
+        "criticalThreshold": 70,
+        "frequency": "monthly",
+        "owner": "Treasury Analyst",
+        "status": "active",
+        "outcomeIds": ["GOAL-PTP-002"],
+        "cdeIds": [],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      }
+    ],
+    "decisions": [
+      {
+        "id": "DEC-PTP-001",
+        "name": "Release Vendor Payment Run",
+        "description": "Weekly decision to execute the automatic payment program for eligible vendor invoices",
+        "ownerRole": "AP Manager",
+        "system": "SAP",
+        "touchpoint": "F110",
+        "cadence": "Weekly",
+        "criticality": "High",
+        "cutoffRule": "Invoices due within 7 days must be eligible for the next payment run",
+        "goalIds": ["GOAL-PTP-001", "GOAL-PTP-002"],
+        "signalIds": ["SIG-PTP-001", "SIG-PTP-002", "SIG-PTP-003"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      }
+    ],
+    "signals": [
+      {
+        "id": "SIG-PTP-001",
+        "name": "Vendor Payment Readiness",
+        "description": "Indicates whether vendor master data is complete and valid for payment processing",
+        "state": "HEALTHY",
+        "valueImpactBand": "High",
+        "ownerRole": "AP Master Data Steward",
+        "descriptionTemplate": "This signal affects the decision '{decisionName}'. If unresolved, payments may be delayed for {affectedCount} invoices; exposure band: {exposureBand}.",
+        "riskDrivers": {
+          "blockedAmount": null,
+          "dueSoonCount": null,
+          "criticalSupplierCount": null,
+          "runBlockingFlag": null
+        },
+        "decisionIds": ["DEC-PTP-001"],
+        "ruleIds": ["RULE-PTP-001", "RULE-PTP-002", "RULE-PTP-003"],
+        "dataProductIds": ["DP-VENDOR-001"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "SIG-PTP-002",
+        "name": "Invoice Posting Readiness",
+        "description": "Indicates whether invoices have complete and valid data for payment processing",
+        "state": "WARNING",
+        "valueImpactBand": "Medium",
+        "ownerRole": "AP Operations Steward",
+        "descriptionTemplate": "This signal affects '{decisionName}'. If unresolved, invoices may not post correctly or in time; due-soon exposure band: {exposureBand}.",
+        "riskDrivers": {
+          "blockedAmount": 125000,
+          "dueSoonCount": 47,
+          "criticalSupplierCount": 3,
+          "runBlockingFlag": false
+        },
+        "decisionIds": ["DEC-PTP-001"],
+        "ruleIds": ["RULE-PTP-004", "RULE-PTP-005"],
+        "dataProductIds": ["DP-INVOICE-001"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "SIG-PTP-003",
+        "name": "Payment Run Eligibility",
+        "description": "Indicates whether payment candidates meet all eligibility criteria for the payment run",
+        "state": "HEALTHY",
+        "valueImpactBand": "High",
+        "ownerRole": "AP Payment Run Steward",
+        "descriptionTemplate": "This signal affects '{decisionName}'. If unresolved, payment candidates may be ineligible or block the run; run-blocking: {runBlockingFlag}.",
+        "riskDrivers": {
+          "blockedAmount": null,
+          "dueSoonCount": null,
+          "criticalSupplierCount": null,
+          "runBlockingFlag": false
+        },
+        "decisionIds": ["DEC-PTP-001"],
+        "ruleIds": ["RULE-PTP-006"],
+        "dataProductIds": ["DP-PAYRUN-001"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      }
+    ],
+    "rules": [
+      {
+        "id": "RULE-PTP-001",
+        "name": "Vendor Bank Account Present",
+        "description": "Every active vendor must have at least one valid bank account configured",
+        "cdeId": "",
+        "ruleType": "completeness",
+        "expression": "LFBK.BANKN IS NOT NULL AND LFBK.BANKL IS NOT NULL",
+        "severity": "critical",
+        "passThreshold": 100,
+        "isExecutable": true,
+        "lastRunResult": {
+          "totalRecords": 5420,
+          "passedRecords": 5385,
+          "failedRecords": 35,
+          "passRate": 99.35
+        },
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "RULE-PTP-002",
+        "name": "Vendor Bank Country Valid",
+        "description": "Vendor bank country must be a valid ISO country code",
+        "cdeId": "",
+        "ruleType": "validity",
+        "expression": "LFBK.BANKS IN (SELECT LAND1 FROM T005)",
+        "severity": "major",
+        "passThreshold": 100,
+        "isExecutable": true,
+        "lastRunResult": {
+          "totalRecords": 5385,
+          "passedRecords": 5380,
+          "failedRecords": 5,
+          "passRate": 99.91
+        },
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "RULE-PTP-003",
+        "name": "Payment Method Consistency",
+        "description": "Vendor default payment method must be consistent with configured bank details",
+        "cdeId": "",
+        "ruleType": "consistency",
+        "expression": "LFA1.ZWELS MATCHES LFBK payment capabilities",
+        "severity": "major",
+        "passThreshold": 98,
+        "isExecutable": true,
+        "lastRunResult": {
+          "totalRecords": 5420,
+          "passedRecords": 5350,
+          "failedRecords": 70,
+          "passRate": 98.71
+        },
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "RULE-PTP-004",
+        "name": "Invoice Payment Terms Present",
+        "description": "Every posted invoice must have payment terms assigned",
+        "cdeId": "",
+        "ruleType": "completeness",
+        "expression": "BSEG.ZTERM IS NOT NULL",
+        "severity": "major",
+        "passThreshold": 100,
+        "isExecutable": true,
+        "lastRunResult": {
+          "totalRecords": 12450,
+          "passedRecords": 12403,
+          "failedRecords": 47,
+          "passRate": 99.62
+        },
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "RULE-PTP-005",
+        "name": "Invoice Due Date Derivable",
+        "description": "Invoice due date must be calculable from baseline date and payment terms",
+        "cdeId": "",
+        "ruleType": "validity",
+        "expression": "BKPF.BLDAT IS NOT NULL AND T052.ZTAG1 IS NOT NULL",
+        "severity": "critical",
+        "passThreshold": 100,
+        "isExecutable": true,
+        "lastRunResult": {
+          "totalRecords": 12450,
+          "passedRecords": 12448,
+          "failedRecords": 2,
+          "passRate": 99.98
+        },
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "RULE-PTP-006",
+        "name": "Payment Block Reason Provided When Blocked",
+        "description": "If an invoice has a payment block, a reason code must be provided",
+        "cdeId": "",
+        "ruleType": "consistency",
+        "expression": "IF BSEG.ZLSPR <> '' THEN BSEG.ZLSCH IS NOT NULL",
+        "severity": "minor",
+        "passThreshold": 95,
+        "isExecutable": true,
+        "lastRunResult": {
+          "totalRecords": 892,
+          "passedRecords": 890,
+          "failedRecords": 2,
+          "passRate": 99.78
+        },
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      }
+    ],
+    "dataProducts": [
+      {
+        "id": "DP-VENDOR-001",
+        "name": "VendorPaymentProfile",
+        "description": "Consolidated vendor master data optimized for payment processing decisions",
+        "version": "v1",
+        "grain": "VENDOR",
+        "primaryKey": ["vendorId", "companyCode"],
+        "fields": [
+          "vendorId",
+          "vendorName",
+          "companyCode",
+          "country",
+          "paymentMethodDefault",
+          "bankAccountPresentFlag",
+          "vendorCriticalityTier"
+        ],
+        "objectFamily": "Vendor",
+        "contractStability": "STABLE",
+        "ownerRole": "Master Data Manager",
+        "datasetIds": ["DS-SAP-LFA1", "DS-SAP-LFBK"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "DP-INVOICE-001",
+        "name": "InvoicePaymentReadiness",
+        "description": "Invoice header and line item data consolidated for payment eligibility assessment",
+        "version": "v1",
+        "grain": "INVOICE_HEADER",
+        "primaryKey": ["companyCode", "fiscalYear", "documentNumber"],
+        "fields": [
+          "companyCode",
+          "fiscalYear",
+          "documentNumber",
+          "vendorId",
+          "invoiceAmount",
+          "currency",
+          "dueDate",
+          "postingDate",
+          "baselineDate",
+          "paymentTerms",
+          "paymentMethod",
+          "paymentBlockFlag",
+          "paymentBlockReason",
+          "invoiceStatus",
+          "vendorCriticalityTier"
+        ],
+        "objectFamily": "Invoice",
+        "contractStability": "STABLE",
+        "ownerRole": "AP Process Owner",
+        "datasetIds": ["DS-SAP-BKPF", "DS-SAP-BSEG", "DS-SAP-LFA1"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "DP-PAYRUN-001",
+        "name": "PaymentRunCandidate",
+        "description": "Payment run candidate records for eligibility and execution tracking",
+        "version": "v1",
+        "grain": "PAYMENT_RUN_CANDIDATE",
+        "primaryKey": ["companyCode", "fiscalYear", "documentNumber"],
+        "fields": [
+          "companyCode",
+          "plannedRunDate",
+          "fiscalYear",
+          "documentNumber",
+          "eligibleStatus",
+          "ineligibleReason",
+          "amount",
+          "currency",
+          "dueInDays",
+          "runBlockingFlag"
+        ],
+        "objectFamily": "PaymentRun",
+        "contractStability": "EXPERIMENTAL",
+        "ownerRole": "AP Payment Run Steward",
+        "datasetIds": ["DS-SAP-BKPF", "DS-SAP-BSEG", "DS-SAP-REGUH", "DS-SAP-REGUP"],
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      }
+    ],
+    "datasets": [
+      {
+        "id": "DS-SAP-LFA1",
+        "name": "SAP Vendor Master (LFA1)",
+        "description": "Vendor master general data",
+        "system": "SAP",
+        "objectFamily": "Vendor",
+        "tableName": "LFA1",
+        "fieldCount": 89,
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "DS-SAP-LFBK",
+        "name": "SAP Vendor Bank Details (LFBK)",
+        "description": "Vendor bank account details",
+        "system": "SAP",
+        "objectFamily": "Vendor",
+        "tableName": "LFBK",
+        "fieldCount": 24,
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "DS-SAP-BKPF",
+        "name": "SAP Accounting Document Header (BKPF)",
+        "description": "Accounting document header records",
+        "system": "SAP",
+        "objectFamily": "Invoice",
+        "tableName": "BKPF",
+        "fieldCount": 112,
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "DS-SAP-BSEG",
+        "name": "SAP Accounting Document Line Items (BSEG)",
+        "description": "Accounting document line item details",
+        "system": "SAP",
+        "objectFamily": "Invoice",
+        "tableName": "BSEG",
+        "fieldCount": 287,
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "DS-SAP-REGUH",
+        "name": "SAP Payment Program Header (REGUH)",
+        "description": "Payment program settlement data header",
+        "system": "SAP",
+        "objectFamily": "PaymentRun",
+        "tableName": "REGUH",
+        "fieldCount": 67,
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      },
+      {
+        "id": "DS-SAP-REGUP",
+        "name": "SAP Payment Program Items (REGUP)",
+        "description": "Payment program processed items",
+        "system": "SAP",
+        "objectFamily": "PaymentRun",
+        "tableName": "REGUP",
+        "fieldCount": 94,
+        "createdAt": "2026-01-25T00:00:00Z",
+        "updatedAt": "2026-01-25T00:00:00Z"
+      }
+    ]
+  },
+  "relationships": [
+    {
+      "id": "REL-001",
+      "type": "isMeasuredBy",
+      "fromType": "Goal",
+      "fromId": "GOAL-PTP-001",
+      "toType": "KPI",
+      "toId": "KPI-PTP-001",
+      "cardinality": "Goal 1 -> KPI 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-002",
+      "type": "isMeasuredBy",
+      "fromType": "Goal",
+      "fromId": "GOAL-PTP-002",
+      "toType": "KPI",
+      "toId": "KPI-PTP-002",
+      "cardinality": "Goal 1 -> KPI 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-003",
+      "type": "protects",
+      "fromType": "Decision",
+      "fromId": "DEC-PTP-001",
+      "toType": "Goal",
+      "toId": "GOAL-PTP-001",
+      "cardinality": "Decision 1..* -> Goal 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-004",
+      "type": "protects",
+      "fromType": "Decision",
+      "fromId": "DEC-PTP-001",
+      "toType": "Goal",
+      "toId": "GOAL-PTP-002",
+      "cardinality": "Decision 1..* -> Goal 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-005",
+      "type": "degrades",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-001",
+      "toType": "Decision",
+      "toId": "DEC-PTP-001",
+      "cardinality": "Signal 1 -> Decision 1",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-006",
+      "type": "degrades",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-002",
+      "toType": "Decision",
+      "toId": "DEC-PTP-001",
+      "cardinality": "Signal 1 -> Decision 1",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-007",
+      "type": "degrades",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-003",
+      "toType": "Decision",
+      "toId": "DEC-PTP-001",
+      "cardinality": "Signal 1 -> Decision 1",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-008",
+      "type": "isDerivedFrom",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-001",
+      "toType": "Rule",
+      "toId": "RULE-PTP-001",
+      "cardinality": "Signal 1..* -> Rule 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-009",
+      "type": "isDerivedFrom",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-001",
+      "toType": "Rule",
+      "toId": "RULE-PTP-002",
+      "cardinality": "Signal 1..* -> Rule 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-010",
+      "type": "isDerivedFrom",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-001",
+      "toType": "Rule",
+      "toId": "RULE-PTP-003",
+      "cardinality": "Signal 1..* -> Rule 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-011",
+      "type": "isDerivedFrom",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-002",
+      "toType": "Rule",
+      "toId": "RULE-PTP-004",
+      "cardinality": "Signal 1..* -> Rule 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-012",
+      "type": "isDerivedFrom",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-002",
+      "toType": "Rule",
+      "toId": "RULE-PTP-005",
+      "cardinality": "Signal 1..* -> Rule 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-013",
+      "type": "isDerivedFrom",
+      "fromType": "Signal",
+      "fromId": "SIG-PTP-003",
+      "toType": "Rule",
+      "toId": "RULE-PTP-006",
+      "cardinality": "Signal 1..* -> Rule 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-014",
+      "type": "validates",
+      "fromType": "Rule",
+      "fromId": "RULE-PTP-001",
+      "toType": "DataProduct",
+      "toId": "DP-VENDOR-001",
+      "cardinality": "Rule 1..* -> DataProduct 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-015",
+      "type": "validates",
+      "fromType": "Rule",
+      "fromId": "RULE-PTP-002",
+      "toType": "DataProduct",
+      "toId": "DP-VENDOR-001",
+      "cardinality": "Rule 1..* -> DataProduct 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-016",
+      "type": "validates",
+      "fromType": "Rule",
+      "fromId": "RULE-PTP-003",
+      "toType": "DataProduct",
+      "toId": "DP-VENDOR-001",
+      "cardinality": "Rule 1..* -> DataProduct 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-017",
+      "type": "validates",
+      "fromType": "Rule",
+      "fromId": "RULE-PTP-004",
+      "toType": "DataProduct",
+      "toId": "DP-INVOICE-001",
+      "cardinality": "Rule 1..* -> DataProduct 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-018",
+      "type": "validates",
+      "fromType": "Rule",
+      "fromId": "RULE-PTP-005",
+      "toType": "DataProduct",
+      "toId": "DP-INVOICE-001",
+      "cardinality": "Rule 1..* -> DataProduct 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-019",
+      "type": "validates",
+      "fromType": "Rule",
+      "fromId": "RULE-PTP-006",
+      "toType": "DataProduct",
+      "toId": "DP-PAYRUN-001",
+      "cardinality": "Rule 1..* -> DataProduct 0..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-020",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-VENDOR-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-LFA1",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-021",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-VENDOR-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-LFBK",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-022",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-INVOICE-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-BKPF",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-023",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-INVOICE-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-BSEG",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-024",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-INVOICE-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-LFA1",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-025",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-PAYRUN-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-BKPF",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-026",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-PAYRUN-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-BSEG",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-027",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-PAYRUN-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-REGUH",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    },
+    {
+      "id": "REL-028",
+      "type": "uses",
+      "fromType": "DataProduct",
+      "fromId": "DP-PAYRUN-001",
+      "toType": "Dataset",
+      "toId": "DS-SAP-REGUP",
+      "cardinality": "DataProduct 0..* -> Dataset 1..*",
+      "createdAt": "2026-01-25T00:00:00Z",
+      "updatedAt": "2026-01-25T00:00:00Z"
+    }
+  ]
+}

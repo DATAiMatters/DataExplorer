@@ -4,13 +4,26 @@ import { useAppStore } from '@/store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { ZoomIn, ZoomOut, RotateCcw, Target, Network, GitBranch, Database, RefreshCw, HardDrive } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Target, Network, GitBranch, Database, RefreshCw, HardDrive, Maximize2, Minimize2 } from 'lucide-react';
 import { OutcomeLineage } from './OutcomeLineage';
 import { useToast } from '@/hooks/use-toast';
 import type { BusinessOutcome, KPI, CriticalDataElement, DataQualityRule } from '@/types';
 
 // --- Semantic Graph Node & Edge Types ---
-type NodeType = 'outcome' | 'kpi' | 'cde' | 'rule' | 'goal' | 'policy' | 'dataset';
+// Extended model: Goal → KPI → Decision → Signal → Rule → DataProduct → Dataset
+type NodeType =
+  | 'goal' | 'outcome'           // Business outcomes (goal is preferred, outcome kept for backwards compat)
+  | 'kpi'                        // Key Performance Indicators
+  | 'decision'                   // Decision points that protect goals
+  | 'signal'                     // Health signals that can degrade decisions
+  | 'rule'                       // Data quality rules
+  | 'dataproduct'                // Logical data products combining datasets
+  | 'dataset'                    // Physical source datasets
+  | 'field'                      // Dataset fields/columns
+  | 'cde'                        // Critical Data Elements (legacy)
+  | 'policy' | 'term' | 'system' // SKP imports
+  | 'property'                   // Property subnode (expanded from parent)
+  | 'arrayitem';                 // Array item subnode (e.g., individual field names)
 
 interface CanvasNode extends d3.SimulationNodeDatum {
   id: string;
@@ -18,22 +31,34 @@ interface CanvasNode extends d3.SimulationNodeDatum {
   type: NodeType;
   entity: any; // Accept any asset type for extensibility
   dqScore: number | null;
+  signalState?: 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
   impactScore?: number; // For business value
   maturityTier?: string; // For semantic maturity
 }
 
 interface CanvasLink extends d3.SimulationLinkDatum<CanvasNode> {
-  type: 'outcome-kpi' | 'kpi-cde' | 'cde-rule' | 'enforces' | 'defines' | 'impacts';
+  type: string; // Allow any relationship type
 }
 
 const nodeTypeColors: Record<NodeType, string> = {
-  outcome: '#10b981', // emerald-500
-  kpi: '#3b82f6',     // blue-500
-  cde: '#f59e0b',     // amber-500
-  rule: '#8b5cf6',    // violet-500
-  goal: '#22d3ee',    // cyan-400
-  policy: '#eab308',  // yellow-500
-  dataset: '#6366f1', // indigo-500
+  // Core outcome traceability chain
+  goal: '#10b981',        // emerald-500 - business outcomes
+  outcome: '#10b981',     // emerald-500 - alias for goal
+  kpi: '#3b82f6',         // blue-500 - metrics
+  decision: '#f97316',    // orange-500 - decision points
+  signal: '#eab308',      // yellow-500 - health signals
+  rule: '#8b5cf6',        // violet-500 - DQ rules
+  dataproduct: '#06b6d4', // cyan-500 - logical data products
+  dataset: '#6366f1',     // indigo-500 - physical datasets
+  field: '#a855f7',       // purple-500 - dataset fields/columns
+  // Legacy / SKP types
+  cde: '#f59e0b',         // amber-500 - critical data elements
+  policy: '#84cc16',      // lime-500 - governance policies
+  term: '#ec4899',        // pink-500 - business terms
+  system: '#14b8a6',      // teal-500 - source systems
+  // Property expansion types
+  property: '#71717a',    // zinc-500 - property subnodes
+  arrayitem: '#94a3b8',   // slate-400 - array items
 };
 
 // DQ health score colors
@@ -44,13 +69,34 @@ const getDqHealthColor = (score: number | null): string => {
   return '#ef4444';                      // red-500 - critical
 };
 
+// Signal state colors for health indicator rings
+const getSignalStateColor = (state?: string): string => {
+  switch (state) {
+    case 'HEALTHY': return '#10b981';  // emerald-500
+    case 'WARNING': return '#f59e0b';  // amber-500
+    case 'CRITICAL': return '#ef4444'; // red-500
+    default: return '#52525b';         // zinc-600 - unknown
+  }
+};
+
 const edgeTypeColors: Record<string, string> = {
+  // Core traceability relationships
+  'ISMEASUREDBY': '#10b981',    // Goal → KPI
+  'PROTECTS': '#f97316',        // Decision → Goal
+  'DEGRADES': '#ef4444',        // Signal → Decision
+  'ISDERIVEDFROM': '#eab308',   // Signal → Rule
+  'VALIDATES': '#8b5cf6',       // Rule → DataProduct
+  'USES': '#06b6d4',            // DataProduct → Dataset
+  'HAS_FIELD': '#a855f7',       // Dataset → Field
+  'HAS_PROPERTY': '#71717a',    // Property expansion
+  // Legacy relationships
   'outcome-kpi': '#10b981',
   'kpi-cde': '#3b82f6',
   'cde-rule': '#f59e0b',
   'enforces': '#eab308',
   'defines': '#6366f1',
   'impacts': '#ef4444',
+  'RELATES_TO': '#71717a',
   'RELATION': '#71717a', // Default for Neo4j relationships
 };
 
@@ -86,10 +132,28 @@ export function OutcomeCanvas() {
   const [showAISuggestionPanel, setShowAISuggestionPanel] = useState(false);
   const { toast } = useToast();
   const [importing, setImporting] = useState(false);
-  const [importDb, setImportDb] = useState('skp');
+  const [importDb, setImportDb] = useState('neo4j');
+  const [importSource, setImportSource] = useState('skp');
+  const [importLabel, setImportLabel] = useState('');
   const [dataSource, setDataSource] = useState<'local' | 'neo4j'>('local');
   const [neo4jData, setNeo4jData] = useState<Neo4jGraphResponse | null>(null);
   const [loadingNeo4j, setLoadingNeo4j] = useState(false);
+  const [nodeLimit, setNodeLimit] = useState(500);
+  const [filteredNodeIds, setFilteredNodeIds] = useState<Set<string> | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Radial context menu state
+  const [contextMenuNode, setContextMenuNode] = useState<CanvasNode | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  // Locked nodes (fixed position)
+  const [lockedNodes, setLockedNodes] = useState<Set<string>>(new Set());
+  // Nodes with expanded properties shown
+  const [expandedPropertyNodes, setExpandedPropertyNodes] = useState<Set<string>>(new Set());
+  // Nodes with collapsed edges
+  const [collapsedEdgeNodes, setCollapsedEdgeNodes] = useState<Set<string>>(new Set());
+  // Property subnodes that are dynamically added to the graph
+  const [propertyNodes, setPropertyNodes] = useState<CanvasNode[]>([]);
+  const [propertyLinks, setPropertyLinks] = useState<CanvasLink[]>([]);
 
   const outcomes = useAppStore((s) => s.businessOutcomes);
   const kpis = useAppStore((s) => s.kpis);
@@ -100,7 +164,9 @@ export function OutcomeCanvas() {
   const fetchNeo4jGraph = async () => {
     setLoadingNeo4j(true);
     try {
-      const res = await fetch('/api/graph?limit=500');
+      const sourceParam = importSource ? `&source=${encodeURIComponent(importSource)}` : '';
+      const labelParam = importLabel ? `&label=${encodeURIComponent(importLabel)}` : '';
+      const res = await fetch(`/api/graph?limit=${nodeLimit}&db=${encodeURIComponent(importDb)}${sourceParam}${labelParam}`);
       if (!res.ok) {
         throw new Error(`Failed to fetch graph: ${res.status}`);
       }
@@ -247,26 +313,42 @@ export function OutcomeCanvas() {
   const neo4jGraphData = useMemo(() => {
     if (!neo4jData) return { nodes: [], links: [] };
 
+    const validNodeTypes: NodeType[] = [
+      'goal', 'outcome', 'kpi', 'decision', 'signal', 'rule',
+      'dataproduct', 'dataset', 'cde', 'policy', 'term', 'system'
+    ];
+
     const nodes: CanvasNode[] = neo4jData.nodes.map((n) => {
       // Map Neo4j labels to our node types
       const label = n.labels[0]?.toLowerCase() || 'dataset';
-      const nodeType: NodeType = ['outcome', 'kpi', 'cde', 'rule', 'goal', 'policy', 'dataset'].includes(label)
+      const nodeType: NodeType = validNodeTypes.includes(label as NodeType)
         ? (label as NodeType)
         : 'dataset';
+
+      // Extract signal state for Signal nodes
+      const signalState = nodeType === 'signal'
+        ? (n.properties.state as 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'UNKNOWN')
+        : undefined;
+
+      // Extract DQ score from rules (passRate property)
+      const dqScore = nodeType === 'rule' && n.properties.passRate != null
+        ? (n.properties.passRate as number)
+        : null;
 
       return {
         id: n.id,
         label: (n.properties.name as string) || (n.properties.id as string) || n.id,
         type: nodeType,
         entity: n.properties,
-        dqScore: null,
+        dqScore,
+        signalState,
       };
     });
 
     const links: CanvasLink[] = neo4jData.relationships.map((r) => ({
       source: r.startNodeId,
       target: r.endNodeId,
-      type: (r.type as CanvasLink['type']) || 'impacts',
+      type: r.type || 'RELATION',
     }));
 
     return { nodes, links };
@@ -292,6 +374,22 @@ export function OutcomeCanvas() {
       source: 'Local',
     };
   }, [dataSource, outcomes, kpis, cdes, dqRules, graphData]);
+
+  // Compute counts per node type for legend (including property nodes)
+  const nodeCountsByType = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const node of graphData.nodes) {
+      counts[node.type] = (counts[node.type] || 0) + 1;
+    }
+    // Also count dynamically added property nodes
+    for (const node of propertyNodes) {
+      counts[node.type] = (counts[node.type] || 0) + 1;
+    }
+    return counts;
+  }, [graphData.nodes, propertyNodes]);
+
+  // Legend panel visibility
+  const [showLegend, setShowLegend] = useState(true);
 
   // --- Traceability Path Highlighting ---
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -319,14 +417,33 @@ export function OutcomeCanvas() {
   async function handleSKPImport() {
     setImporting(true);
     try {
-      const res = await fetch(`/api/skp-import?db=${encodeURIComponent(importDb)}`);
+      const sourceParam = importSource ? `&source=${encodeURIComponent(importSource)}` : '';
+      const labelParam = importLabel ? `&label=${encodeURIComponent(importLabel)}` : '';
+      const res = await fetch(`/api/skp-import?db=${encodeURIComponent(importDb)}${sourceParam}${labelParam}`);
       const data = await res.json();
       if (data.success) {
-        const assetCount = data.assets?.success ?? data.assets?.total ?? 0;
-        const relCount = data.relationships?.success ?? data.relationships?.total ?? 0;
+        // Handle new response structure with summary.nodes/relationships
+        const nodeCount = data.summary?.nodes?.success ?? data.assets?.success ?? 0;
+        const relCount = data.summary?.relationships?.success ?? data.relationships?.success ?? 0;
+
+        // Build detailed breakdown if available
+        let details = '';
+        if (data.details) {
+          const parts: string[] = [];
+          for (const [type, result] of Object.entries(data.details)) {
+            const r = result as { success: number };
+            if (r.success > 0) {
+              parts.push(`${r.success} ${type}`);
+            }
+          }
+          if (parts.length > 0) {
+            details = ` (${parts.join(', ')})`;
+          }
+        }
+
         toast({
           title: 'SKP Import Complete',
-          description: `${assetCount} assets, ${relCount} relationships imported. Refreshing graph...`
+          description: `${nodeCount} nodes${details}, ${relCount} relationships imported. Refreshing graph...`
         });
         // Auto-switch to Neo4j view and refresh
         setDataSource('neo4j');
@@ -349,6 +466,78 @@ export function OutcomeCanvas() {
     }
   }
 
+  async function handlePTPSampleImport() {
+    setImporting(true);
+    try {
+      // Fetch the PTP sample JSON
+      const sampleRes = await fetch('/samples/ptp-business-outcome-graph.json');
+      if (!sampleRes.ok) {
+        throw new Error('Failed to load PTP sample file');
+      }
+      const sampleData = await sampleRes.json();
+
+      // Import to Neo4j
+      const sourceParam = `&source=ptp-sample`;
+      const labelParam = importLabel ? `&label=${encodeURIComponent(importLabel)}` : '&label=PTP_Demo';
+      const res = await fetch(`/api/outcome-graph-import?db=${encodeURIComponent(importDb)}${sourceParam}${labelParam}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sampleData),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const nodeCount = data.summary?.nodes?.success ?? 0;
+        const relCount = data.summary?.relationships?.success ?? 0;
+
+        let details = '';
+        if (data.details) {
+          const parts: string[] = [];
+          for (const [type, result] of Object.entries(data.details)) {
+            const r = result as { success: number };
+            if (r.success > 0) {
+              parts.push(`${r.success} ${type}`);
+            }
+          }
+          if (parts.length > 0) {
+            details = ` (${parts.join(', ')})`;
+          }
+        }
+
+        toast({
+          title: 'PTP Sample Import Complete',
+          description: `${nodeCount} nodes${details}, ${relCount} relationships imported. Refreshing graph...`
+        });
+        // Set filters to show only PTP sample data, then switch to Neo4j view
+        setImportSource('ptp-sample');
+        setImportLabel('PTP_Demo');
+        setDataSource('neo4j');
+        // Fetch with the PTP filters
+        const ptpSourceParam = '&source=ptp-sample';
+        const ptpLabelParam = '&label=PTP_Demo';
+        const ptpRes = await fetch(`/api/graph?limit=${nodeLimit}&db=${encodeURIComponent(importDb)}${ptpSourceParam}${ptpLabelParam}`);
+        if (ptpRes.ok) {
+          const ptpData = await ptpRes.json();
+          setNeo4jData(ptpData);
+        }
+      } else {
+        toast({
+          title: 'PTP Import Error',
+          description: data.error || 'Unknown error',
+          variant: 'destructive',
+        });
+      }
+    } catch (e) {
+      toast({
+        title: 'PTP Import Error',
+        description: String(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setImporting(false);
+    }
+  }
+
   useEffect(() => {
     if (!svgRef.current || graphData.nodes.length === 0) return;
 
@@ -358,12 +547,23 @@ export function OutcomeCanvas() {
     const width = svgRef.current.clientWidth || 800;
     const height = svgRef.current.clientHeight || 500;
 
-    const nodes: CanvasNode[] = graphData.nodes.map((d) => ({ ...d }));
-    const links: CanvasLink[] = graphData.links.map((d) => ({
-      source: d.source as string,
-      target: d.target as string,
-      type: d.type,
-    }));
+    // Merge base graph data with dynamically expanded property nodes
+    const nodes: CanvasNode[] = [
+      ...graphData.nodes.map((d) => ({ ...d })),
+      ...propertyNodes.map((d) => ({ ...d })),
+    ];
+    const links: CanvasLink[] = [
+      ...graphData.links.map((d) => ({
+        source: d.source as string,
+        target: d.target as string,
+        type: d.type,
+      })),
+      ...propertyLinks.map((d) => ({
+        source: d.source as string,
+        target: d.target as string,
+        type: d.type,
+      })),
+    ];
 
     // Size nodes based on their connections
     const nodeDegrees = new Map<string, number>();
@@ -421,7 +621,7 @@ export function OutcomeCanvas() {
         .attr('fill', color);
     });
 
-    // Draw edges
+    // Draw edges (respecting collapsed nodes)
     const link = g
       .append('g')
       .attr('class', 'links')
@@ -432,12 +632,23 @@ export function OutcomeCanvas() {
       .attr('stroke', (d) => tracePath.includes(d.source as string) && tracePath.includes(d.target as string)
         ? '#ef4444' // Highlighted path color
         : edgeTypeColors[d.type] || '#404040')
-      .attr('stroke-opacity', 0.6)
+      .attr('stroke-opacity', (d) => {
+        const sourceId = typeof d.source === 'string' ? d.source : (d.source as CanvasNode).id;
+        const targetId = typeof d.target === 'string' ? d.target : (d.target as CanvasNode).id;
+        // Hide edges if either node is collapsed
+        if (collapsedEdgeNodes.has(sourceId) || collapsedEdgeNodes.has(targetId)) {
+          return 0;
+        }
+        return 0.6;
+      })
       .attr('stroke-width', (d) => tracePath.includes(d.source as string) && tracePath.includes(d.target as string)
         ? 4 : 2)
       .attr('marker-end', (d) => `url(#arrow-${d.type})`);
 
-    // Draw DQ health indicator rings (outer ring showing health status)
+    // Draw health indicator rings (outer ring showing health status)
+    // For Signal nodes: use signal state color
+    // For Rule nodes: use DQ score color
+    // For others: use DQ score if available
     const healthRing = g
       .append('g')
       .attr('class', 'health-rings')
@@ -447,10 +658,23 @@ export function OutcomeCanvas() {
       .append('circle')
       .attr('r', (d) => sizeScale(nodeDegrees.get(d.id) || 0) + 4)
       .attr('fill', 'none')
-      .attr('stroke', (d) => getDqHealthColor(d.dqScore))
+      .attr('stroke', (d) => {
+        // Signal nodes use signal state
+        if (d.type === 'signal' && d.signalState) {
+          return getSignalStateColor(d.signalState);
+        }
+        // Others use DQ score
+        return getDqHealthColor(d.dqScore);
+      })
       .attr('stroke-width', 3)
-      .attr('stroke-opacity', (d) => d.dqScore !== null ? 0.8 : 0.3)
-      .attr('stroke-dasharray', (d) => d.dqScore === null ? '4,2' : 'none');
+      .attr('stroke-opacity', (d) => {
+        if (d.type === 'signal' && d.signalState) return 0.8;
+        return d.dqScore !== null ? 0.8 : 0.3;
+      })
+      .attr('stroke-dasharray', (d) => {
+        if (d.type === 'signal' && d.signalState) return 'none';
+        return d.dqScore === null ? '4,2' : 'none';
+      });
 
     // Draw nodes
     const node = g
@@ -462,19 +686,25 @@ export function OutcomeCanvas() {
       .append('circle')
       .attr('r', (d) => sizeScale(nodeDegrees.get(d.id) || 0))
       .attr('fill', (d) => nodeTypeColors[d.type])
-      .attr('stroke', '#18181b')
-      .attr('stroke-width', 2)
+      .attr('stroke', (d) => lockedNodes.has(d.id) ? '#f59e0b' : '#18181b')
+      .attr('stroke-width', (d) => lockedNodes.has(d.id) ? 3 : 2)
+      .attr('opacity', (d) => filteredNodeIds === null || filteredNodeIds.has(d.id) ? 1 : 0.15)
       .style('cursor', 'grab')
       .on('mouseover', function (_event, d) {
         d3.select(this).attr('stroke', '#fff').attr('stroke-width', 3);
         setHoveredNode(d);
       })
-      .on('mouseout', function () {
-        d3.select(this).attr('stroke', '#18181b').attr('stroke-width', 2);
+      .on('mouseout', function (_event, d) {
+        d3.select(this)
+          .attr('stroke', lockedNodes.has(d.id) ? '#f59e0b' : '#18181b')
+          .attr('stroke-width', lockedNodes.has(d.id) ? 3 : 2);
         setHoveredNode(null);
       })
-      .on('click', function (_event, d) {
-        handleNodeSelect(d.id);
+      .on('click', function (event, d) {
+        event.stopPropagation();
+        // Show radial context menu at node position
+        setContextMenuNode(d);
+        setContextMenuPosition({ x: d.x!, y: d.y! });
       })
       .call(
         d3
@@ -490,10 +720,219 @@ export function OutcomeCanvas() {
           })
           .on('end', (event, d) => {
             if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
+            // Keep node fixed if locked
+            if (!lockedNodes.has(d.id)) {
+              d.fx = null;
+              d.fy = null;
+            }
           })
       );
+
+    // Radial context menu group
+    const radialMenuGroup = g.append('g').attr('class', 'radial-menu').style('display', 'none');
+
+    // Menu background circle
+    radialMenuGroup.append('circle')
+      .attr('r', 50)
+      .attr('fill', 'rgba(24, 24, 27, 0.9)')
+      .attr('stroke', '#3f3f46')
+      .attr('stroke-width', 2);
+
+    // Define menu actions with icons (as SVG paths)
+    const menuActions = [
+      {
+        id: 'lock',
+        angle: -90, // top
+        icon: 'M12 17a2 2 0 002-2v-4a2 2 0 00-2-2H8a2 2 0 00-2 2v4a2 2 0 002 2h4zm0 0V9a4 4 0 10-8 0v8', // lock icon path
+        label: 'Lock'
+      },
+      {
+        id: 'properties',
+        angle: 30, // bottom-right
+        icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', // eye icon path
+        label: 'Properties'
+      },
+      {
+        id: 'collapse',
+        angle: 150, // bottom-left
+        icon: 'M19 14l-7 7m0 0l-7-7m7 7V3', // collapse icon path
+        label: 'Collapse'
+      }
+    ];
+
+    // Create menu buttons
+    menuActions.forEach((action, i) => {
+      const angleRad = (action.angle * Math.PI) / 180;
+      const buttonRadius = 35;
+      const bx = Math.cos(angleRad) * buttonRadius;
+      const by = Math.sin(angleRad) * buttonRadius;
+
+      const buttonGroup = radialMenuGroup.append('g')
+        .attr('class', `menu-button menu-button-${action.id}`)
+        .attr('transform', `translate(${bx}, ${by})`)
+        .style('cursor', 'pointer');
+
+      // Button background
+      buttonGroup.append('circle')
+        .attr('r', 16)
+        .attr('fill', '#27272a')
+        .attr('stroke', '#52525b')
+        .attr('stroke-width', 1.5)
+        .on('mouseover', function() {
+          d3.select(this).attr('fill', '#3f3f46').attr('stroke', '#71717a');
+        })
+        .on('mouseout', function() {
+          d3.select(this).attr('fill', '#27272a').attr('stroke', '#52525b');
+        });
+
+      // Button icon (simplified - using text for now)
+      const iconText = action.id === 'lock' ? '🔒' : action.id === 'properties' ? '👁' : '⇄';
+      buttonGroup.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('fill', '#a1a1aa')
+        .attr('font-size', '12px')
+        .text(iconText);
+
+      // Click handler for each button
+      buttonGroup.on('click', function(event) {
+        event.stopPropagation();
+        const menuNode = contextMenuNode;
+        if (!menuNode) return;
+
+        if (action.id === 'lock') {
+          // Toggle lock
+          setLockedNodes(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(menuNode.id)) {
+              newSet.delete(menuNode.id);
+              // Unlock the node in simulation
+              const simNode = nodes.find(n => n.id === menuNode.id);
+              if (simNode) {
+                simNode.fx = null;
+                simNode.fy = null;
+              }
+            } else {
+              newSet.add(menuNode.id);
+              // Lock the node at current position
+              const simNode = nodes.find(n => n.id === menuNode.id);
+              if (simNode) {
+                simNode.fx = simNode.x;
+                simNode.fy = simNode.y;
+              }
+            }
+            return newSet;
+          });
+        } else if (action.id === 'properties') {
+          // Toggle property expansion - works for both regular nodes and property nodes (to expand arrays)
+          setExpandedPropertyNodes(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(menuNode.id)) {
+              newSet.delete(menuNode.id);
+              // Remove child property/array nodes
+              setPropertyNodes(pn => pn.filter(p => !p.id.startsWith(`prop:${menuNode.id}:`) && !p.id.startsWith(`arr:${menuNode.id}:`)));
+              setPropertyLinks(pl => pl.filter(l => {
+                const sourceId = typeof l.source === 'string' ? l.source : (l.source as CanvasNode).id;
+                return sourceId !== menuNode.id;
+              }));
+            } else {
+              newSet.add(menuNode.id);
+
+              // Check if this is a property node containing an array (for expanding array items)
+              if (menuNode.type === 'property' && menuNode.entity?.isArray && Array.isArray(menuNode.entity.value)) {
+                const arrayValues = menuNode.entity.value as unknown[];
+                const newArrayNodes: CanvasNode[] = [];
+                const newArrayLinks: CanvasLink[] = [];
+
+                arrayValues.forEach((item, idx) => {
+                  const arrNodeId = `arr:${menuNode.id}:${idx}`;
+                  const displayValue = typeof item === 'object'
+                    ? JSON.stringify(item).slice(0, 25)
+                    : String(item).slice(0, 25);
+
+                  newArrayNodes.push({
+                    id: arrNodeId,
+                    label: displayValue,
+                    type: 'arrayitem',
+                    entity: { value: item, parentId: menuNode.id, index: idx },
+                    dqScore: null,
+                    x: (menuNode.x || 0) + Math.cos(idx * 0.5) * 60,
+                    y: (menuNode.y || 0) + Math.sin(idx * 0.5) * 60,
+                  });
+
+                  newArrayLinks.push({
+                    source: menuNode.id,
+                    target: arrNodeId,
+                    type: 'HAS_PROPERTY',
+                  });
+                });
+
+                setPropertyNodes(pn => [...pn, ...newArrayNodes]);
+                setPropertyLinks(pl => [...pl, ...newArrayLinks]);
+              } else {
+                // Regular node - expand its properties
+                const entity = menuNode.entity;
+                if (entity && typeof entity === 'object') {
+                  const newPropNodes: CanvasNode[] = [];
+                  const newPropLinks: CanvasLink[] = [];
+
+                  Object.entries(entity).forEach(([key, value], idx) => {
+                    if (value === null || value === undefined || key === 'id') return;
+
+                    const isArray = Array.isArray(value);
+                    const propNodeId = `prop:${menuNode.id}:${key}`;
+                    const displayValue = isArray
+                      ? `${key} [${(value as unknown[]).length}]`
+                      : `${key}: ${String(value).slice(0, 20)}${String(value).length > 20 ? '...' : ''}`;
+
+                    newPropNodes.push({
+                      id: propNodeId,
+                      label: displayValue,
+                      type: 'property',
+                      entity: { key, value, parentId: menuNode.id, isArray },
+                      dqScore: null,
+                      x: (menuNode.x || 0) + Math.cos(idx * 0.8) * 80,
+                      y: (menuNode.y || 0) + Math.sin(idx * 0.8) * 80,
+                    });
+
+                    newPropLinks.push({
+                      source: menuNode.id,
+                      target: propNodeId,
+                      type: 'HAS_PROPERTY',
+                    });
+                  });
+
+                  setPropertyNodes(pn => [...pn, ...newPropNodes]);
+                  setPropertyLinks(pl => [...pl, ...newPropLinks]);
+                }
+              }
+            }
+            return newSet;
+          });
+        } else if (action.id === 'collapse') {
+          // Toggle edge collapse
+          setCollapsedEdgeNodes(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(menuNode.id)) {
+              newSet.delete(menuNode.id);
+            } else {
+              newSet.add(menuNode.id);
+            }
+            return newSet;
+          });
+        }
+
+        // Hide menu after action
+        setContextMenuNode(null);
+        setContextMenuPosition(null);
+      });
+    });
+
+    // Click on background to close menu
+    svg.on('click', () => {
+      setContextMenuNode(null);
+      setContextMenuPosition(null);
+    });
 
     // Draw labels
     const label = g
@@ -508,6 +947,7 @@ export function OutcomeCanvas() {
       .attr('fill', '#a1a1aa')
       .attr('font-size', '11px')
       .attr('pointer-events', 'none')
+      .attr('opacity', (d) => filteredNodeIds === null || filteredNodeIds.has(d.id) ? 1 : 0.15)
       .text((d) => d.label.length > 20 ? d.label.slice(0, 18) + '...' : d.label);
 
     simulation.on('tick', () => {
@@ -524,10 +964,43 @@ export function OutcomeCanvas() {
       label.attr('x', (d) => d.x!).attr('y', (d) => d.y!);
     });
 
+    // Update radial menu position when contextMenuPosition changes
+    if (contextMenuPosition) {
+      radialMenuGroup
+        .style('display', 'block')
+        .attr('transform', `translate(${contextMenuPosition.x}, ${contextMenuPosition.y})`);
+
+      // Update lock button icon based on locked state
+      const lockButton = radialMenuGroup.select('.menu-button-lock text');
+      if (contextMenuNode && lockedNodes.has(contextMenuNode.id)) {
+        lockButton.text('🔓'); // unlocked icon when node is locked
+      } else {
+        lockButton.text('🔒'); // locked icon when node is unlocked
+      }
+
+      // Update properties button icon
+      const propsButton = radialMenuGroup.select('.menu-button-properties text');
+      if (contextMenuNode && expandedPropertyNodes.has(contextMenuNode.id)) {
+        propsButton.text('🙈'); // hide properties
+      } else {
+        propsButton.text('👁'); // show properties
+      }
+
+      // Update collapse button icon
+      const collapseButton = radialMenuGroup.select('.menu-button-collapse text');
+      if (contextMenuNode && collapsedEdgeNodes.has(contextMenuNode.id)) {
+        collapseButton.text('⤢'); // expand
+      } else {
+        collapseButton.text('⇄'); // collapse
+      }
+    } else {
+      radialMenuGroup.style('display', 'none');
+    }
+
     return () => {
       simulation.stop();
     };
-  }, [graphData, linkStrength, chargeStrength, tracePath]);
+  }, [graphData, linkStrength, chargeStrength, tracePath, filteredNodeIds, lockedNodes, contextMenuPosition, contextMenuNode, expandedPropertyNodes, collapsedEdgeNodes, propertyNodes, propertyLinks]);
 
   const handleZoom = (factor: number) => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
@@ -548,8 +1021,56 @@ export function OutcomeCanvas() {
   };
 
   const handleSemanticQuery = () => {
-    // Placeholder for semantic query handling logic
-    console.log('Semantic query:', semanticQuery);
+    if (!semanticQuery.trim()) {
+      // Clear filter
+      setFilteredNodeIds(null);
+      return;
+    }
+
+    const query = semanticQuery.toLowerCase();
+    const matchingIds = new Set<string>();
+
+    // Simple text matching across node properties
+    for (const node of graphData.nodes) {
+      const searchText = [
+        node.label,
+        node.type,
+        node.entity?.description,
+        node.entity?.name,
+        node.entity?.formula,
+        node.entity?.expression,
+        node.entity?.system,
+        node.entity?.tableName,
+        node.entity?.objectFamily,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      if (searchText.includes(query)) {
+        matchingIds.add(node.id);
+      }
+    }
+
+    // Also include connected nodes (one hop) for context
+    for (const link of graphData.links) {
+      const sourceId = typeof link.source === 'string' ? link.source : (link.source as CanvasNode).id;
+      const targetId = typeof link.target === 'string' ? link.target : (link.target as CanvasNode).id;
+
+      if (matchingIds.has(sourceId)) {
+        matchingIds.add(targetId);
+      }
+      if (matchingIds.has(targetId)) {
+        matchingIds.add(sourceId);
+      }
+    }
+
+    setFilteredNodeIds(matchingIds.size > 0 ? matchingIds : null);
+
+    toast({
+      title: matchingIds.size > 0 ? `Found ${matchingIds.size} matching nodes` : 'No matches found',
+      description: matchingIds.size > 0 ? 'Matching nodes are highlighted' : 'Try a different search term',
+    });
   };
 
   if (graphData.nodes.length === 0) {
@@ -608,7 +1129,9 @@ export function OutcomeCanvas() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Controls */}
+      {/* Controls - hidden in fullscreen */}
+      {!isFullscreen && (
+      <>
       <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-900/50">
         <div className="flex items-center gap-4">
           {/* View Toggle */}
@@ -713,15 +1236,53 @@ export function OutcomeCanvas() {
             onClick={handleSKPImport}
             disabled={importing}
           >
-            {importing ? 'Importing SKP...' : 'Import SKP Catalog'}
+            {importing ? 'Importing...' : 'Import SKP'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-1"
+            onClick={handlePTPSampleImport}
+            disabled={importing}
+          >
+            PTP Sample
           </Button>
           <input
             type="text"
-            className="ml-2 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs w-32"
+            className="ml-2 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs w-24"
             value={importDb}
             onChange={e => setImportDb(e.target.value)}
-            placeholder="Neo4j DB name"
-            aria-label="Neo4j DB name"
+            placeholder="Database"
+            aria-label="Neo4j database name"
+            title="Neo4j database name"
+          />
+          <input
+            type="text"
+            className="ml-1 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs w-24"
+            value={importSource}
+            onChange={e => setImportSource(e.target.value)}
+            placeholder="Source tag"
+            aria-label="Source tag for filtering"
+            title="Source tag to identify this import (for filtering)"
+          />
+          <input
+            type="text"
+            className="ml-1 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs w-32"
+            value={importLabel}
+            onChange={e => setImportLabel(e.target.value)}
+            placeholder="Label (e.g. SKP_Prod)"
+            aria-label="Neo4j label for nodes"
+            title="Additional Neo4j label applied to all imported nodes"
+          />
+          <input
+            type="number"
+            className="ml-1 px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs w-20"
+            value={nodeLimit}
+            onChange={e => setNodeLimit(Math.max(1, Math.min(10000, parseInt(e.target.value) || 500)))}
+            min={1}
+            max={10000}
+            aria-label="Node limit"
+            title="Maximum number of nodes to fetch (1-10000)"
           />
         </div>
 
@@ -745,112 +1306,244 @@ export function OutcomeCanvas() {
         </div>
       </div>
 
-      {/* Graph */}
-      <div className="flex-1 relative">
-        <svg ref={svgRef} className="w-full h-full bg-zinc-950" />
+      {/* Semantic Query/Filter Bar */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-900/30">
+        <input
+          type="text"
+          className="px-3 py-1.5 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 text-sm flex-1 max-w-md"
+          placeholder="Semantic query: e.g. 'rules impacting high-value datasets'"
+          onChange={(e) => setSemanticQuery(e.target.value)}
+          value={semanticQuery}
+          aria-label="Semantic Query Filter"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSemanticQuery}
+        >
+          Filter
+        </Button>
+        <span className="text-xs text-zinc-500 ml-2">Press Enter or click Filter to search</span>
+      </div>
+      </>
+      )}
 
-        {/* Semantic Query/Filter Bar */}
-        <div className="absolute top-4 left-4 z-10">
-          <input
-            type="text"
-            className="px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-200 text-sm w-72"
-            placeholder="Semantic query: e.g. 'rules impacting high-value datasets'"
-            onChange={(e) => setSemanticQuery(e.target.value)}
-            value={semanticQuery}
-            aria-label="Semantic Query Filter"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-2"
-            onClick={handleSemanticQuery}
+      {/* Graph Area with Fixed Left Legend */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Fixed Left Legend Panel - hidden in fullscreen */}
+        {showLegend && !isFullscreen && (
+          <div className="w-48 flex-shrink-0 bg-zinc-900 border-r border-zinc-800 overflow-y-auto">
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-zinc-300">Traceability Chain</span>
+                <button
+                  onClick={() => setShowLegend(false)}
+                  className="text-zinc-500 hover:text-zinc-300 text-xs"
+                  title="Hide legend"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-1 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.goal }} />
+                    <span className="text-xs text-zinc-300">Goal</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.goal || nodeCountsByType.outcome || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.kpi }} />
+                    <span className="text-xs text-zinc-300">KPI</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.kpi || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.decision }} />
+                    <span className="text-xs text-zinc-300">Decision</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.decision || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.signal }} />
+                    <span className="text-xs text-zinc-300">Signal</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.signal || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.rule }} />
+                    <span className="text-xs text-zinc-300">Rule</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.rule || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.dataproduct }} />
+                    <span className="text-xs text-zinc-300">DataProduct</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.dataproduct || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.dataset }} />
+                    <span className="text-xs text-zinc-300">Dataset</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.dataset || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.field }} />
+                    <span className="text-xs text-zinc-300">Field</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.field || 0}</span>
+                </div>
+              </div>
+
+              <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">SKP / Other</div>
+              <div className="space-y-1 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.term }} />
+                    <span className="text-xs text-zinc-300">Term</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.term || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.policy }} />
+                    <span className="text-xs text-zinc-300">Policy</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.policy || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.system }} />
+                    <span className="text-xs text-zinc-300">System</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.system || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.cde }} />
+                    <span className="text-xs text-zinc-300">CDE (legacy)</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.cde || 0}</span>
+                </div>
+              </div>
+
+              <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">Relationships</div>
+              <div className="space-y-1 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded" style={{ backgroundColor: edgeTypeColors['ISMEASUREDBY'] }} />
+                  <span className="text-xs text-zinc-300">isMeasuredBy</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded" style={{ backgroundColor: edgeTypeColors['PROTECTS'] }} />
+                  <span className="text-xs text-zinc-300">protects</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded" style={{ backgroundColor: edgeTypeColors['DEGRADES'] }} />
+                  <span className="text-xs text-zinc-300">degrades</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded" style={{ backgroundColor: edgeTypeColors['ISDERIVEDFROM'] }} />
+                  <span className="text-xs text-zinc-300">isDerivedFrom</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded" style={{ backgroundColor: edgeTypeColors['VALIDATES'] }} />
+                  <span className="text-xs text-zinc-300">validates</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded" style={{ backgroundColor: edgeTypeColors['USES'] }} />
+                  <span className="text-xs text-zinc-300">uses</span>
+                </div>
+              </div>
+
+              <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">Health (Ring)</div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#10b981' }} />
+                  <span className="text-xs text-zinc-300">Healthy</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#f59e0b' }} />
+                  <span className="text-xs text-zinc-300">Warning</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#ef4444' }} />
+                  <span className="text-xs text-zinc-300">Critical</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border-2 border-dashed" style={{ borderColor: '#52525b' }} />
+                  <span className="text-xs text-zinc-300">Unknown</span>
+                </div>
+              </div>
+
+              <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">Expanded Properties</div>
+              <div className="space-y-1 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.property }} />
+                    <span className="text-xs text-zinc-300">Property</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.property || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.arrayitem }} />
+                    <span className="text-xs text-zinc-300">Array Item</span>
+                  </div>
+                  <span className="text-xs text-zinc-500">{nodeCountsByType.arrayitem || 0}</span>
+                </div>
+              </div>
+
+              <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">Node Actions</div>
+              <div className="text-xs text-zinc-500 space-y-1">
+                <p>Click a node for options:</p>
+                <div className="flex items-center gap-2">
+                  <span>🔒</span>
+                  <span className="text-zinc-400">Lock position</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>👁</span>
+                  <span className="text-zinc-400">Show properties</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>⇄</span>
+                  <span className="text-zinc-400">Collapse edges</span>
+                </div>
+              </div>
+              <p className="text-xs text-zinc-600 mt-2">Tip: Click 👁 on array properties to expand items</p>
+            </div>
+          </div>
+        )}
+
+        {/* Graph Canvas */}
+        <div className="flex-1 relative">
+          {!showLegend && !isFullscreen && (
+            <button
+              onClick={() => setShowLegend(true)}
+              className="absolute top-2 left-2 z-10 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2 py-1 rounded border border-zinc-700"
+              title="Show legend"
+            >
+              Legend
+            </button>
+          )}
+          {/* Fullscreen Toggle Button */}
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="absolute top-2 right-2 z-10 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 p-2 rounded border border-zinc-700"
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
           >
-            Filter
-          </Button>
-        </div>
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+          <svg ref={svgRef} className="w-full h-full bg-zinc-950" />
 
-        {/* Legend */}
-        <div className="absolute bottom-4 left-4 bg-zinc-900/90 border border-zinc-800 rounded-lg p-3">
-          <div className="text-xs font-medium text-zinc-400 mb-2">Node Types</div>
-          <div className="space-y-1 mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.outcome }} />
-              <span className="text-xs text-zinc-300">Outcome</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.kpi }} />
-              <span className="text-xs text-zinc-300">KPI</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.cde }} />
-              <span className="text-xs text-zinc-300">CDE</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.rule }} />
-              <span className="text-xs text-zinc-300">DQ Rule</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.goal }} />
-              <span className="text-xs text-cyan-300">Goal</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.policy }} />
-              <span className="text-xs text-yellow-300">Policy</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nodeTypeColors.dataset }} />
-              <span className="text-xs text-indigo-300">Dataset</span>
-            </div>
-          </div>
-          <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">Edge Types</div>
-          <div className="space-y-1 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['outcome-kpi'] }} />
-              <span className="text-xs text-zinc-300">Outcome → KPI</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['kpi-cde'] }} />
-              <span className="text-xs text-zinc-300">KPI → CDE</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['cde-rule'] }} />
-              <span className="text-xs text-zinc-300">CDE → Rule</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['enforces'] }} />
-              <span className="text-xs text-yellow-300">Enforces</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['defines'] }} />
-              <span className="text-xs text-indigo-300">Defines</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-1 rounded" style={{ backgroundColor: edgeTypeColors['impacts'] }} />
-              <span className="text-xs text-red-300">Impacts</span>
-            </div>
-          </div>
-          <div className="text-xs font-medium text-zinc-400 mb-2 pt-2 border-t border-zinc-700">DQ Health (Ring)</div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#10b981' }} />
-              <span className="text-xs text-zinc-300">Healthy (≥80%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#f59e0b' }} />
-              <span className="text-xs text-zinc-300">Warning (60-79%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full border-2" style={{ borderColor: '#ef4444' }} />
-              <span className="text-xs text-zinc-300">Critical (&lt;60%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full border-2 border-dashed" style={{ borderColor: '#52525b' }} />
-              <span className="text-xs text-zinc-300">Not run</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Hover Panel */}
+          {/* Hover Panel */}
         {hoveredNode && (
           <div className="absolute top-4 right-4 bg-zinc-900/95 border border-zinc-800 rounded-lg p-4 max-w-xs">
             <div className="flex items-center justify-between gap-2 mb-2">
@@ -990,6 +1683,7 @@ export function OutcomeCanvas() {
         >
           AI Suggestion
         </Button>
+        </div>
       </div>
     </div>
   );

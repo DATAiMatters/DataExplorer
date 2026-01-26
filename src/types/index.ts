@@ -363,6 +363,126 @@ export interface TraceLink {
 }
 
 // ============================================
+// EXTENDED BUSINESS OUTCOME GRAPH TYPES
+// ============================================
+// Model: Goal → KPI → Decision → Signal → Rule → DataProduct → Dataset
+
+export type SignalState = 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
+export type ValueImpactBand = 'High' | 'Medium' | 'Low';
+
+export interface Decision {
+  id: string;
+  name: string;
+  description?: string;
+  ownerRole?: string;
+  system?: string;
+  touchpoint?: string;           // e.g., SAP transaction code like "F110"
+  cadence?: string;              // e.g., "Weekly", "Daily"
+  criticality?: 'High' | 'Medium' | 'Low';
+  cutoffRule?: string;           // Business rule for decision timing
+  goalIds: string[];             // Goals this decision protects
+  signalIds: string[];           // Signals that can degrade this decision
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Signal {
+  id: string;
+  name: string;
+  description?: string;
+  state: SignalState;
+  valueImpactBand: ValueImpactBand;
+  ownerRole?: string;
+  descriptionTemplate?: string;  // Template with placeholders like {decisionName}, {exposureBand}
+  riskDrivers?: {
+    blockedAmount?: number | null;
+    dueSoonCount?: number | null;
+    criticalSupplierCount?: number | null;
+    runBlockingFlag?: boolean | null;
+  };
+  decisionIds: string[];         // Decisions this signal degrades
+  ruleIds: string[];             // Rules that feed into this signal
+  dataProductIds: string[];      // DataProducts this signal uses
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DataProduct {
+  id: string;
+  name: string;
+  description?: string;
+  version?: string;
+  grain?: string;                // e.g., "INVOICE_HEADER", "VENDOR"
+  primaryKey?: string[];         // Composite key fields
+  fields?: string[];             // Available fields in this data product
+  objectFamily?: string;         // e.g., "Vendor", "Invoice", "PaymentRun"
+  contractStability?: 'STABLE' | 'EXPERIMENTAL' | 'DEPRECATED';
+  ownerRole?: string;
+  datasetIds: string[];          // Source datasets this product uses
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Dataset {
+  id: string;
+  name: string;
+  description?: string;
+  system?: string;               // e.g., "SAP"
+  objectFamily?: string;         // e.g., "Vendor", "Invoice"
+  tableName?: string;            // Physical table name like "LFA1", "BKPF"
+  fieldCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Extended relationship types for the graph
+export type ExtendedRelationshipType =
+  | 'isMeasuredBy'      // Goal → KPI
+  | 'protects'          // Decision → Goal
+  | 'degrades'          // Signal → Decision
+  | 'isDerivedFrom'     // Signal → Rule
+  | 'validates'         // Rule → DataProduct
+  | 'uses'              // DataProduct → Dataset
+  | 'belongsTo'         // Generic containment
+  | 'supports';         // Process → Goal
+
+export interface ExtendedRelationship {
+  id: string;
+  type: ExtendedRelationshipType;
+  fromType: string;
+  fromId: string;
+  toType: string;
+  toId: string;
+  cardinality?: string;
+  properties?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Schema for importing/exporting the full graph
+export interface BusinessOutcomeGraph {
+  meta: {
+    schemaVersion: string;
+    tenant?: string;
+    domain?: string;
+    createdAt: string;
+    notes?: string[];
+  };
+  assetTypes: string[];
+  relationshipTypes: string[];
+  assets: {
+    goals: BusinessOutcome[];
+    kpis: KPI[];
+    decisions: Decision[];
+    signals: Signal[];
+    rules: DataQualityRule[];
+    dataProducts: DataProduct[];
+    datasets: Dataset[];
+  };
+  relationships: ExtendedRelationship[];
+}
+
+// ============================================
 // UI STATE TYPES
 // ============================================
 

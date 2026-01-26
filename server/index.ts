@@ -5,6 +5,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import graph from './routes/graph';
 import skpImport from './routes/skp-import';
+import outcomeGraphImport from './routes/outcome-graph-import';
 import health from './routes/health';
 import { closeDriver } from './lib/neo4j';
 
@@ -22,6 +23,7 @@ app.use('*', cors({
 app.route('/api/health', health);
 app.route('/api/graph', graph);
 app.route('/api/skp-import', skpImport);
+app.route('/api/outcome-graph-import', outcomeGraphImport);
 
 // Graceful shutdown
 const shutdown = async () => {

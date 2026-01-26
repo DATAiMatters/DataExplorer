@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Target, Trash2, Pencil, Link2, MoreVertical, Unlink, Network, ShieldCheck, Play } from 'lucide-react';
+import { Plus, Target, Trash2, Pencil, Link2, MoreVertical, Unlink, Network, ShieldCheck, Play, ArrowRight, Activity, Zap, Database, Box, Layers } from 'lucide-react';
 import { OutcomeCanvas } from './visualizations/OutcomeCanvas';
 import type {
   BusinessOutcome,
@@ -594,45 +594,133 @@ export function BusinessOutcomes() {
         </div>
       </header>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-5">
-        <Card className="bg-zinc-900 border-zinc-800">
-          <CardHeader className="pb-2">
-            <CardDescription>Business Outcomes</CardDescription>
-            <CardTitle className="text-3xl">{totalOutcomes}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
-          <CardHeader className="pb-2">
-            <CardDescription>KPIs</CardDescription>
-            <CardTitle className="text-3xl">{totalKpis}</CardTitle>
-          </CardHeader>
-        </Card>
+      {/* Extended Catalog Schema - Traceability Chain */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Network className="w-4 h-4 text-emerald-400" />
+          <span className="text-sm font-medium text-zinc-300">Traceability Chain</span>
+          <span className="text-xs text-zinc-500 ml-2">Goal → KPI → Decision → Signal → Rule → DataProduct → Dataset</span>
+        </div>
+        <div className="flex items-center gap-1 overflow-x-auto pb-2">
+          {/* Goal */}
+          <div className="flex-shrink-0 bg-zinc-800/50 border border-emerald-500/30 rounded-lg p-3 min-w-[100px]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Target className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs text-zinc-400">Goal</span>
+            </div>
+            <div className="text-2xl font-semibold text-emerald-400">{totalOutcomes}</div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+
+          {/* KPI */}
+          <div className="flex-shrink-0 bg-zinc-800/50 border border-blue-500/30 rounded-lg p-3 min-w-[100px]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Activity className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-xs text-zinc-400">KPI</span>
+            </div>
+            <div className="text-2xl font-semibold text-blue-400">{totalKpis}</div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+
+          {/* Decision */}
+          <div className="flex-shrink-0 bg-zinc-800/50 border border-orange-500/30 rounded-lg p-3 min-w-[100px]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Zap className="w-3.5 h-3.5 text-orange-400" />
+              <span className="text-xs text-zinc-400">Decision</span>
+            </div>
+            <div className="text-2xl font-semibold text-orange-400">—</div>
+            <div className="text-[10px] text-zinc-500">Neo4j only</div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+
+          {/* Signal */}
+          <div className="flex-shrink-0 bg-zinc-800/50 border border-yellow-500/30 rounded-lg p-3 min-w-[100px]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Activity className="w-3.5 h-3.5 text-yellow-400" />
+              <span className="text-xs text-zinc-400">Signal</span>
+            </div>
+            <div className="text-2xl font-semibold text-yellow-400">—</div>
+            <div className="text-[10px] text-zinc-500">Neo4j only</div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+
+          {/* Rule */}
+          <div className="flex-shrink-0 bg-zinc-800/50 border border-violet-500/30 rounded-lg p-3 min-w-[100px]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />
+              <span className="text-xs text-zinc-400">Rule</span>
+            </div>
+            <div className="text-2xl font-semibold text-violet-400">{totalRules}</div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+
+          {/* DataProduct */}
+          <div className="flex-shrink-0 bg-zinc-800/50 border border-cyan-500/30 rounded-lg p-3 min-w-[100px]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Box className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-xs text-zinc-400">DataProduct</span>
+            </div>
+            <div className="text-2xl font-semibold text-cyan-400">—</div>
+            <div className="text-[10px] text-zinc-500">Neo4j only</div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+
+          {/* Dataset */}
+          <div className="flex-shrink-0 bg-zinc-800/50 border border-indigo-500/30 rounded-lg p-3 min-w-[100px]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Database className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-xs text-zinc-400">Dataset</span>
+            </div>
+            <div className="text-2xl font-semibold text-indigo-400">—</div>
+            <div className="text-[10px] text-zinc-500">SKP / Neo4j</div>
+          </div>
+
+          {/* DQ Health */}
+          <div className="flex-shrink-0 ml-4 pl-4 border-l border-zinc-700">
+            <div className={`bg-zinc-800/50 border rounded-lg p-3 min-w-[120px] ${dqHealthScore !== null ? (dqHealthScore >= 95 ? 'border-emerald-500/30' : dqHealthScore >= 80 ? 'border-amber-500/30' : 'border-red-500/30') : 'border-zinc-700'}`}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
+                <span className="text-xs text-zinc-400">DQ Health</span>
+              </div>
+              {dqHealthScore !== null ? (
+                <div className={`text-2xl font-semibold ${dqHealthScore >= 95 ? 'text-emerald-400' : dqHealthScore >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {dqHealthScore.toFixed(1)}%
+                </div>
+              ) : (
+                <div className="text-2xl font-semibold text-zinc-500">—</div>
+              )}
+              <div className="text-[10px] text-zinc-500">{rulesExecuted}/{totalRules} executed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Legacy Stats Grid - CDEs */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
             <CardDescription>Critical Data Elements</CardDescription>
             <CardTitle className="text-3xl">{totalCdes}</CardTitle>
+            <p className="text-xs text-zinc-500">Mapped to KPIs</p>
           </CardHeader>
         </Card>
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
-            <CardDescription>DQ Rules</CardDescription>
-            <CardTitle className="text-3xl">{totalRules}</CardTitle>
+            <CardDescription>Linked KPI-CDE Pairs</CardDescription>
+            <CardTitle className="text-3xl">{cdes.reduce((sum, c) => sum + c.kpiIds.length, 0)}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className={`bg-zinc-900 border-zinc-800 ${dqHealthScore !== null ? (dqHealthScore >= 95 ? 'border-emerald-500/30' : dqHealthScore >= 80 ? 'border-amber-500/30' : 'border-red-500/30') : ''}`}>
+        <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" />
-              DQ Health Score
-            </CardDescription>
-            {dqHealthScore !== null ? (
-              <CardTitle className={`text-3xl ${dqHealthScore >= 95 ? 'text-emerald-400' : dqHealthScore >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
-                {dqHealthScore.toFixed(1)}%
-              </CardTitle>
-            ) : (
-              <CardTitle className="text-3xl text-zinc-500">—</CardTitle>
-            )}
-            <p className="text-xs text-zinc-500">{rulesExecuted}/{totalRules} rules executed</p>
+            <CardDescription>Rules per CDE (avg)</CardDescription>
+            <CardTitle className="text-3xl">{totalCdes > 0 ? (totalRules / totalCdes).toFixed(1) : '—'}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader className="pb-2">
+            <CardDescription>Orphan Rules</CardDescription>
+            <CardTitle className="text-3xl">{dqRules.filter(r => !r.cdeId || r.cdeId === 'none').length}</CardTitle>
+            <p className="text-xs text-zinc-500">Not linked to CDE</p>
           </CardHeader>
         </Card>
       </div>

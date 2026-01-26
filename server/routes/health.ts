@@ -42,8 +42,8 @@ health.get('/', async (c) => {
     } else {
       const auth = Buffer.from(`${user}:${password}`).toString('base64');
 
-      // Try a simple request to the base URL or a known endpoint
-      const res = await fetch(baseUrl, {
+      // Try a request to the terms endpoint (known to work)
+      const res = await fetch(`${baseUrl}/v3/terms?limit=1`, {
         method: 'GET',
         headers: { Authorization: `Basic ${auth}` },
       });
